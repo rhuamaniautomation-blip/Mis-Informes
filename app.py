@@ -5,7 +5,7 @@
 #
 #  Diseñado por: CAVA - Especialistas en Robótica y Automatización
 #  Autor:        Roger Huamani
-#  Versión:      1.0.0  (2026)
+#  Versión:      1.1.0  (2026)
 #
 #  Ejecución:    streamlit run app.py
 # ============================================================================
@@ -73,7 +73,7 @@ except Exception:
 # 2. CONSTANTES INSTITUCIONALES Y CONFIGURACIÓN GENERAL
 # ----------------------------------------------------------------------------
 APP_NOMBRE       = "CAVA | Generador de Informes de Mantenimiento"
-APP_VERSION      = "v1.0.0"
+APP_VERSION      = "v1.1.0"
 EMPRESA          = "CAVA - Especialistas en Robótica y Automatización"
 AUTOR_SOFTWARE   = "Roger Huamani"
 ANIO_FOOTER      = datetime.now().year
@@ -1832,8 +1832,8 @@ def pagina_historial():
                         st.session_state["paso"] = 1
                         st.session_state["ia_generada"] = True
                         st.session_state["archivos_generados"] = {}
-                        st.success("Documento cargado en el editor.")
-                        st.switch_page if hasattr(st, "switch_page") else None
+                        st.success("Documento cargado en el editor. Vaya al "
+                                   "menú 'Nuevo informe' para editarlo.")
                         st.rerun()
                     else:
                         st.error("No se pudo recuperar el documento.")
@@ -1897,7 +1897,7 @@ def pagina_configuracion():
                 "de la plantilla cargada (ej. 'Modelo de Informe.docx') y los "
                 "aplicará a todos los documentos generados.")
         tpl = st.file_uploader("Plantilla institucional", type=["docx"])
-        if tpl and st.button(" Aplicar estilo de plantilla"):
+        if tpl and st.button("📐 Aplicar estilo de plantilla"):
             estilo = GestorPlantillas.extraer_estilo(tpl.read())
             GestorPlantillas.aplicar(estilo)
             st.success(f"Plantilla aplicada: fuente {estilo['fuente_normal']} "
@@ -1921,7 +1921,7 @@ def pagina_configuracion():
         st.markdown("### Script SQL para Supabase")
         st.code(SUPABASE_SQL, language="sql")
         st.caption("Ejecútelo en el SQL Editor de su proyecto Supabase y "
-                   "crea el bucket 'informes-cava' en Storage.")
+                   "cree el bucket 'informes-cava' en Storage.")
     render_footer()
 
 
@@ -1982,7 +1982,7 @@ def render_sidebar():
         perfil = st.session_state["perfil"]
         st.markdown(f"👤 **{perfil['nombre']}**  \n🎖️ {perfil['rol']}")
         opcion = st.radio("Módulos", [
-            " Nuevo informe",
+            "🆕 Nuevo informe",
             "🗂 Historial / Archivo",
             "⚙️ Configuración",
             "ℹ️ Acerca de",
@@ -2016,11 +2016,11 @@ def main():
         return
 
     opcion = render_sidebar()
-    if opcion.startswith("🆕"):
+    if opcion == "🆕 Nuevo informe":
         pagina_nuevo_informe()
-    elif opcion.startswith("🗂"):
+    elif opcion == "🗂 Historial / Archivo":
         pagina_historial()
-    elif opcion.startswith("⚙️"):
+    elif opcion == "⚙️ Configuración":
         pagina_configuracion()
     else:
         pagina_acerca()
