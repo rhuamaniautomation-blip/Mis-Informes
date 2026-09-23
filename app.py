@@ -1,9 +1,8 @@
 # ============================================================================
-# CAVA - SISTEMA DE GESTIÓN DE INFORMES DE MANTENIMIENTO v2.1
+# CAVA - SISTEMA DE GESTIÓN DE INFORMES DE MANTENIMIENTO v2.2
 # Diseñado por: CAVA Especialistas en Robótica y Automatización - Roger Huamani
-# Versión: 2.1 (Corrección de accesibilidad y contraste)
+# Versión: 2.2 (Corrección de navegación y persistencia de configuración)
 # Fecha: Septiembre 2026
-# Cumple: WCAG 2.1 AA, ISO 9241-110, ISO 9241-210
 # ============================================================================
 
 import streamlit as st
@@ -18,6 +17,7 @@ import re
 import time
 import textwrap
 from datetime import datetime, timedelta
+from pathlib import Path
 from PIL import Image
 
 # --- Librerías de IA y Base de Datos ---
@@ -41,42 +41,47 @@ import bcrypt
 
 st.set_page_config(
     page_title="CAVA - Sistema de Informes de Mantenimiento",
-    page_icon="",
+    page_icon="🔧",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # --- Constantes de la aplicación ---
 APP_NAME = "CAVA - Sistema de Gestión de Informes de Mantenimiento"
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 APP_AUTHOR = "CAVA Especialistas en Robótica y Automatización - Roger Huamani"
 APP_YEAR = "2026"
 
-# --- Paleta de colores institucional (WCAG 2.1 AA compliant) ---
-# Todos los pares de colores tienen contraste >= 4.5:1
-COLOR_PRIMARY = "#0D2B4E"       # Azul oscuro institucional (texto sobre blanco: 11.5:1)
-COLOR_SECONDARY = "#1E5F8E"     # Azul medio (texto sobre blanco: 6.8:1)
-COLOR_ACCENT = "#C97B00"        # Naranja acento (texto sobre blanco: 4.6:1)
-COLOR_ACCENT_LIGHT = "#FFF3E0"  # Fondo naranja claro
-COLOR_SUCCESS = "#1B5E20"       # Verde oscuro (texto sobre blanco: 7.2:1)
-COLOR_SUCCESS_BG = "#E8F5E9"    # Fondo verde claro
-COLOR_DANGER = "#B71C1C"        # Rojo oscuro (texto sobre blanco: 7.8:1)
-COLOR_DANGER_BG = "#FFEBEE"     # Fondo rojo claro
-COLOR_WARNING = "#E65100"       # Naranja oscuro (texto sobre blanco: 5.1:1)
-COLOR_WARNING_BG = "#FFF3E0"    # Fondo naranja claro
-COLOR_INFO = "#01579B"          # Azul info (texto sobre blanco: 8.2:1)
-COLOR_INFO_BG = "#E1F5FE"       # Fondo azul claro
-COLOR_BG_LIGHT = "#FAFBFC"      # Fondo general muy claro
-COLOR_BG_CARD = "#FFFFFF"       # Fondo de tarjetas (blanco puro)
-COLOR_SIDEBAR = "#F5F7FA"       # Fondo sidebar (gris azulado muy claro)
-COLOR_SIDEBAR_BORDER = "#0D2B4E" # Borde lateral del sidebar
-COLOR_TEXT_DARK = "#1A1A1A"     # Texto principal (casi negro)
-COLOR_TEXT_SECONDARY = "#4A5568" # Texto secundario
-COLOR_TEXT_LIGHT = "#718096"    # Texto terciario / captions
-COLOR_WHITE = "#FFFFFF"         # Blanco
-COLOR_GRAY = "#6C757D"          # Gris neutro
-COLOR_BORDER = "#E2E8F0"        # Borde suave
-COLOR_HOVER = "#EDF2F7"         # Fondo hover
+# --- Directorio de configuración persistente ---
+CONFIG_DIR = Path("cava_config")
+CONFIG_DIR.mkdir(exist_ok=True)
+CONFIG_FILE = CONFIG_DIR / "config.json"
+REPORTS_FILE = CONFIG_DIR / "reports.json"
+
+# --- Paleta de colores institucional ---
+COLOR_PRIMARY = "#0D2B4E"
+COLOR_SECONDARY = "#1E5F8E"
+COLOR_ACCENT = "#C97B00"
+COLOR_ACCENT_LIGHT = "#FFF3E0"
+COLOR_SUCCESS = "#1B5E20"
+COLOR_SUCCESS_BG = "#E8F5E9"
+COLOR_DANGER = "#B71C1C"
+COLOR_DANGER_BG = "#FFEBEE"
+COLOR_WARNING = "#E65100"
+COLOR_WARNING_BG = "#FFF3E0"
+COLOR_INFO = "#01579B"
+COLOR_INFO_BG = "#E1F5FE"
+COLOR_BG_LIGHT = "#FAFBFC"
+COLOR_BG_CARD = "#FFFFFF"
+COLOR_SIDEBAR = "#F5F7FA"
+COLOR_SIDEBAR_BORDER = "#0D2B4E"
+COLOR_TEXT_DARK = "#1A1A1A"
+COLOR_TEXT_SECONDARY = "#4A5568"
+COLOR_TEXT_LIGHT = "#718096"
+COLOR_WHITE = "#FFFFFF"
+COLOR_GRAY = "#6C757D"
+COLOR_BORDER = "#E2E8F0"
+COLOR_HOVER = "#EDF2F7"
 
 # --- Tipos de informe ---
 TIPO_REPORTE_MANTENIMIENTO = "Reporte de Mantenimiento"
@@ -136,24 +141,70 @@ DEFAULT_USERS = {
 }
 
 # ============================================================================
-# SECCIÓN 2: ESTILOS CSS PROFESIONALES (WCAG 2.1 AA Compliant)
+# SECCIÓN 2: SISTEMA DE PERSISTENCIA DE CONFIGURACIÓN
+# ============================================================================
+
+class ConfigPersistence:
+    """Gestiona la persistencia de configuraciones en archivos JSON."""
+
+    @staticmethod
+    def load_config() -> dict:
+        """Carga la configuración desde el archivo JSON."""
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error al cargar configuración: {e}")
+        return {}
+
+    @staticmethod
+    def save_config(config: dict):
+        """Guarda la configuración en el archivo JSON."""
+        try:
+            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            print(f"Error al guardar configuración: {e}")
+            return False
+
+    @staticmethod
+    def load_reports() -> list:
+        """Carga los informes desde el archivo JSON."""
+        if REPORTS_FILE.exists():
+            try:
+                with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error al cargar informes: {e}")
+        return []
+
+    @staticmethod
+    def save_reports(reports: list):
+        """Guarda los informes en el archivo JSON."""
+        try:
+            with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(reports, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            print(f"Error al guardar informes: {e}")
+            return False
+
+
+# ============================================================================
+# SECCIÓN 3: ESTILOS CSS PROFESIONALES
 # ============================================================================
 
 def aplicar_estilos_css():
     """Aplica estilos CSS profesionales con contraste normativo."""
     st.markdown(f"""
     <style>
-        /* ============================================
-           RESET Y CONFIGURACIÓN GENERAL
-           ============================================ */
         .stApp {{
             background-color: {COLOR_BG_LIGHT};
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }}
 
-        /* ============================================
-           SIDEBAR - FONDO CLARO (Corrección principal)
-           ============================================ */
         [data-testid="stSidebar"] {{
             background-color: {COLOR_SIDEBAR} !important;
             border-right: 4px solid {COLOR_SIDEBAR_BORDER};
@@ -168,25 +219,6 @@ def aplicar_estilos_css():
             font-weight: 600;
         }}
 
-        [data-testid="stSidebar"] .stRadio label,
-        [data-testid="stSidebar"] .stSelectbox label {{
-            color: {COLOR_TEXT_DARK} !important;
-        }}
-
-        [data-testid="stSidebar"] button[kind="secondary"] {{
-            background-color: {COLOR_WHITE};
-            color: {COLOR_PRIMARY};
-            border: 1px solid {COLOR_PRIMARY};
-        }}
-
-        [data-testid="stSidebar"] button[kind="secondary"]:hover {{
-            background-color: {COLOR_PRIMARY};
-            color: {COLOR_WHITE};
-        }}
-
-        /* ============================================
-           ENCABEZADO PRINCIPAL
-           ============================================ */
         .main-header {{
             background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%);
             padding: 25px 30px;
@@ -210,33 +242,6 @@ def aplicar_estilos_css():
             color: rgba(255, 255, 255, 0.95);
         }}
 
-        /* ============================================
-           TARJETAS DE INFORMACIÓN
-           ============================================ */
-        .info-card {{
-            background: {COLOR_BG_CARD};
-            border-radius: 12px;
-            padding: 20px 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            border-left: 5px solid {COLOR_SECONDARY};
-            margin-bottom: 15px;
-        }}
-
-        .info-card h3 {{
-            color: {COLOR_PRIMARY};
-            margin: 0 0 10px 0;
-            font-size: 16px;
-        }}
-
-        .info-card p {{
-            color: {COLOR_TEXT_DARK};
-            margin: 0;
-            font-size: 14px;
-        }}
-
-        /* ============================================
-           TARJETAS DE ESTADÍSTICAS
-           ============================================ */
         .stat-card {{
             background: {COLOR_BG_CARD};
             border-radius: 12px;
@@ -265,40 +270,6 @@ def aplicar_estilos_css():
             font-weight: 500;
         }}
 
-        /* ============================================
-           BADGES DE ESTADO
-           ============================================ */
-        .badge {{
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }}
-
-        .badge-success {{
-            background-color: {COLOR_SUCCESS_BG};
-            color: {COLOR_SUCCESS};
-        }}
-
-        .badge-warning {{
-            background-color: {COLOR_WARNING_BG};
-            color: {COLOR_WARNING};
-        }}
-
-        .badge-danger {{
-            background-color: {COLOR_DANGER_BG};
-            color: {COLOR_DANGER};
-        }}
-
-        .badge-info {{
-            background-color: {COLOR_INFO_BG};
-            color: {COLOR_INFO};
-        }}
-
-        /* ============================================
-           LOGIN CONTAINER
-           ============================================ */
         .login-container {{
             max-width: 450px;
             margin: 0 auto;
@@ -325,9 +296,6 @@ def aplicar_estilos_css():
             font-size: 13px;
         }}
 
-        /* ============================================
-           FOOTER
-           ============================================ */
         .footer {{
             background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%);
             padding: 20px 30px;
@@ -349,18 +317,12 @@ def aplicar_estilos_css():
             color: {COLOR_ACCENT};
         }}
 
-        /* ============================================
-           SEPARADOR ESTILIZADO
-           ============================================ */
         .custom-divider {{
             height: 2px;
             background: linear-gradient(90deg, transparent, {COLOR_SECONDARY}, transparent);
             margin: 20px 0;
         }}
 
-        /* ============================================
-           ALERTAS PERSONALIZADAS
-           ============================================ */
         .custom-alert {{
             background: {COLOR_INFO_BG};
             border-left: 4px solid {COLOR_INFO};
@@ -370,27 +332,6 @@ def aplicar_estilos_css():
             color: {COLOR_TEXT_DARK};
         }}
 
-        .custom-alert-success {{
-            background: {COLOR_SUCCESS_BG};
-            border-left: 4px solid {COLOR_SUCCESS};
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin: 10px 0;
-            color: {COLOR_TEXT_DARK};
-        }}
-
-        .custom-alert-warning {{
-            background: {COLOR_WARNING_BG};
-            border-left: 4px solid {COLOR_WARNING};
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin: 10px 0;
-            color: {COLOR_TEXT_DARK};
-        }}
-
-        /* ============================================
-           BOTONES
-           ============================================ */
         .stButton > button {{
             border-radius: 8px;
             font-weight: 600;
@@ -403,34 +344,10 @@ def aplicar_estilos_css():
             box-shadow: 0 3px 10px rgba(0,0,0,0.15);
         }}
 
-        /* ============================================
-           TABLAS
-           ============================================ */
-        .stDataFrame {{
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }}
-
-        /* ============================================
-           CAMPOS OBLIGATORIOS
-           ============================================ */
-        .required-field::after {{
-            content: " *";
-            color: {COLOR_DANGER};
-            font-weight: bold;
-        }}
-
-        /* ============================================
-           OCULTAR ELEMENTOS DE STREAMLIT
-           ============================================ */
         #MainMenu {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         header {{visibility: hidden;}}
 
-        /* ============================================
-           RESPONSIVE
-           ============================================ */
         @media (max-width: 768px) {{
             .main-header h1 {{
                 font-size: 20px;
@@ -444,7 +361,7 @@ def aplicar_estilos_css():
 
 
 # ============================================================================
-# SECCIÓN 3: GESTIÓN DE AUTENTICACIÓN
+# SECCIÓN 4: GESTIÓN DE AUTENTICACIÓN
 # ============================================================================
 
 class AuthenticationManager:
@@ -470,7 +387,7 @@ class AuthenticationManager:
             return False
 
     def authenticate(self, username: str, password: str) -> dict:
-        """Autentica un usuario. Retorna dict con datos del usuario o None."""
+        """Autentica un usuario."""
         username = username.strip().lower()
         if username in self.users:
             user_data = self.users[username]
@@ -484,7 +401,7 @@ class AuthenticationManager:
         return None
 
     def register_user(self, username: str, password: str, nombre: str, rol: str) -> bool:
-        """Registra un nuevo usuario en el sistema."""
+        """Registra un nuevo usuario."""
         username = username.strip().lower()
         if username in self.users:
             return False
@@ -510,7 +427,7 @@ def render_login_screen():
     """Renderiza la pantalla de inicio de sesión."""
     st.markdown(f"""
     <div style="text-align:center; padding: 40px 0 20px 0;">
-        <h1 style="color:{COLOR_PRIMARY}; font-size:32px; margin-bottom:5px;">🔧 CAVA</h1>
+        <h1 style="color:{COLOR_PRIMARY}; font-size:32px; margin-bottom:5px;"> CAVA</h1>
         <p style="color:{COLOR_TEXT_SECONDARY}; font-size:14px;">
             Especialistas en Robótica y Automatización
         </p>
@@ -532,7 +449,7 @@ def render_login_screen():
         </div>
         """, unsafe_allow_html=True)
 
-        with st.form("login_form"):
+        with st.form("login_form", clear_on_submit=False):
             username = st.text_input(
                 " Usuario",
                 placeholder="Ingrese su usuario",
@@ -573,7 +490,7 @@ def render_login_screen():
 
 
 # ============================================================================
-# SECCIÓN 4: GESTIÓN DE SUPABASE
+# SECCIÓN 5: GESTIÓN DE SUPABASE
 # ============================================================================
 
 class SupabaseManager:
@@ -601,7 +518,7 @@ class SupabaseManager:
         return self.connected and self.client is not None
 
     def save_report(self, report_data: dict) -> bool:
-        """Guarda un informe en Supabase."""
+        """Guarda un informe en Supabase o localmente."""
         if not self.is_connected():
             return self._save_local(report_data)
         try:
@@ -625,33 +542,6 @@ class SupabaseManager:
         except Exception:
             return self._get_local_reports()
 
-    def get_report_by_id(self, report_id: str) -> dict:
-        """Obtiene un informe específico por su ID."""
-        if not self.is_connected():
-            return self._get_local_report_by_id(report_id)
-        try:
-            result = self.client.table("informes_mantenimiento") \
-                .select("*") \
-                .eq("id", report_id) \
-                .single() \
-                .execute()
-            return result.data if result.data else {}
-        except Exception:
-            return self._get_local_report_by_id(report_id)
-
-    def update_report(self, report_id: str, update_data: dict) -> bool:
-        """Actualiza un informe existente."""
-        if not self.is_connected():
-            return self._update_local_report(report_id, update_data)
-        try:
-            self.client.table("informes_mantenimiento") \
-                .update(update_data) \
-                .eq("id", report_id) \
-                .execute()
-            return True
-        except Exception:
-            return self._update_local_report(report_id, update_data)
-
     def delete_report(self, report_id: str) -> bool:
         """Elimina un informe."""
         if not self.is_connected():
@@ -665,64 +555,32 @@ class SupabaseManager:
         except Exception:
             return self._delete_local_report(report_id)
 
-    def upload_image(self, image_bytes: bytes, filename: str) -> str:
-        """Sube una imagen al storage de Supabase."""
-        if not self.is_connected():
-            return ""
-        try:
-            file_path = f"informes/{datetime.now().strftime('%Y/%m')}/{filename}"
-            self.client.storage.from_("imagenes").upload(
-                file_path,
-                image_bytes,
-                {"content-type": "image/png"}
-            )
-            return self.client.storage.from_("imagenes").get_public_url(file_path)
-        except Exception as e:
-            st.warning(f"⚠️ No se pudo subir la imagen: {e}")
-            return ""
-
-    # --- Métodos de almacenamiento local (fallback) ---
-
     def _save_local(self, report_data: dict) -> bool:
         """Guarda localmente cuando Supabase no está configurado."""
-        if "local_reports" not in st.session_state:
-            st.session_state.local_reports = []
+        reports = ConfigPersistence.load_reports()
         report_data["storage"] = "local"
-        st.session_state.local_reports.insert(0, report_data)
+        reports.insert(0, report_data)
+        ConfigPersistence.save_reports(reports)
+        st.session_state.local_reports = reports
         return True
 
     def _get_local_reports(self) -> list:
         """Obtiene informes del almacenamiento local."""
-        return st.session_state.get("local_reports", [])
-
-    def _get_local_report_by_id(self, report_id: str) -> dict:
-        """Busca un informe local por ID."""
-        for report in st.session_state.get("local_reports", []):
-            if report.get("id") == report_id:
-                return report
-        return {}
-
-    def _update_local_report(self, report_id: str, update_data: dict) -> bool:
-        """Actualiza un informe local."""
-        reports = st.session_state.get("local_reports", [])
-        for i, report in enumerate(reports):
-            if report.get("id") == report_id:
-                reports[i].update(update_data)
-                st.session_state.local_reports = reports
-                return True
-        return False
+        reports = ConfigPersistence.load_reports()
+        st.session_state.local_reports = reports
+        return reports
 
     def _delete_local_report(self, report_id: str) -> bool:
         """Elimina un informe local."""
-        reports = st.session_state.get("local_reports", [])
-        st.session_state.local_reports = [
-            r for r in reports if r.get("id") != report_id
-        ]
+        reports = ConfigPersistence.load_reports()
+        reports = [r for r in reports if r.get("id") != report_id]
+        ConfigPersistence.save_reports(reports)
+        st.session_state.local_reports = reports
         return True
 
 
 # ============================================================================
-# SECCIÓN 5: INTEGRACIÓN CON GEMINI AI
+# SECCIÓN 6: INTEGRACIÓN CON GEMINI AI
 # ============================================================================
 
 class GeminiAIManager:
@@ -771,7 +629,7 @@ class GeminiAIManager:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-            st.warning(f"️ Error con Gemini AI: {e}. Generando informe con plantilla base.")
+            st.warning(f"⚠️ Error con Gemini AI: {e}. Generando informe con plantilla base.")
             return self._generate_fallback_report(raw_description, report_type, additional_context)
 
     def _build_report_prompt(self, raw_description: str, context_info: str) -> str:
@@ -1093,7 +951,7 @@ a partir de la descripción del técnico.]
 
 
 # ============================================================================
-# SECCIÓN 6: GENERADOR DE NÚMEROS DE INFORME
+# SECCIÓN 7: GENERADOR DE NÚMEROS DE INFORME
 # ============================================================================
 
 class ReportNumberGenerator:
@@ -1101,10 +959,7 @@ class ReportNumberGenerator:
 
     @staticmethod
     def generate(tipo: str) -> str:
-        """
-        Genera un número único de informe.
-        Formato: RM-2026-0001 o IE-2026-0001
-        """
+        """Genera un número único de informe."""
         if "report_counter" not in st.session_state:
             st.session_state.report_counter = {
                 TIPO_REPORTE_MANTENIMIENTO: 0,
@@ -1124,7 +979,7 @@ class ReportNumberGenerator:
 
 
 # ============================================================================
-# SECCIÓN 7: GESTIÓN DE IMÁGENES
+# SECCIÓN 8: GESTIÓN DE IMÁGENES
 # ============================================================================
 
 class ImageManager:
@@ -1181,7 +1036,7 @@ class ImageManager:
 
 
 # ============================================================================
-# SECCIÓN 8: EXPORTACIÓN A WORD (DOCX)
+# SECCIÓN 9: EXPORTACIÓN A WORD (DOCX)
 # ============================================================================
 
 class WordExporter:
@@ -1198,14 +1053,12 @@ class WordExporter:
         """Crea un documento Word profesional."""
         doc = Document()
 
-        # --- Configurar estilos del documento ---
         style = doc.styles['Normal']
         font = style.font
         font.name = 'Calibri'
         font.size = Pt(11)
         font.color.rgb = RGBColor(26, 26, 26)
 
-        # --- Encabezado del documento ---
         header = doc.sections[0].header
         header_para = header.paragraphs[0]
         header_para.text = f"CAVA - Especialistas en Robótica y Automatización"
@@ -1213,13 +1066,12 @@ class WordExporter:
         header_para.style.font.size = Pt(8)
         header_para.style.font.color.rgb = RGBColor(108, 117, 125)
 
-        # --- Página de título ---
         for _ in range(4):
             doc.add_paragraph()
 
         title = doc.add_paragraph()
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title.add_run(" CAVA")
+        run = title.add_run("🔧 CAVA")
         run.font.size = Pt(36)
         run.font.bold = True
         run.font.color.rgb = RGBColor(13, 43, 78)
@@ -1255,7 +1107,6 @@ class WordExporter:
 
         doc.add_page_break()
 
-        # --- Tabla de información del documento ---
         info_table = doc.add_table(rows=4, cols=2)
         info_table.style = 'Light Grid Accent 1'
         info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1277,10 +1128,8 @@ class WordExporter:
 
         doc.add_paragraph()
 
-        # --- Contenido del informe ---
         WordExporter._add_formatted_content(doc, report_content)
 
-        # --- Sección de imágenes ---
         if images and len(images) > 0:
             doc.add_page_break()
             img_title = doc.add_heading('REGISTRO FOTOGRÁFICO', level=1)
@@ -1310,7 +1159,6 @@ class WordExporter:
                 run.font.italic = True
                 run.font.color.rgb = RGBColor(108, 117, 125)
 
-        # --- Pie de página ---
         footer = doc.sections[0].footer
         footer_para = footer.paragraphs[0]
         footer_para.text = (
@@ -1320,7 +1168,6 @@ class WordExporter:
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         footer_para.style.font.size = Pt(8)
 
-        # --- Guardar en buffer ---
         buffer = io.BytesIO()
         doc.save(buffer)
         buffer.seek(0)
@@ -1328,7 +1175,7 @@ class WordExporter:
 
     @staticmethod
     def _add_formatted_content(doc: Document, content: str):
-        """Agrega contenido formateado (markdown básico) al documento."""
+        """Agrega contenido formateado al documento."""
         lines = content.split('\n')
         for line in lines:
             line = line.strip()
@@ -1378,7 +1225,7 @@ class WordExporter:
 
 
 # ============================================================================
-# SECCIÓN 9: EXPORTACIÓN A PDF
+# SECCIÓN 10: EXPORTACIÓN A PDF
 # ============================================================================
 
 class PDFExporter:
@@ -1450,7 +1297,7 @@ class PDFExporter:
         pdf.ln(50)
         pdf.set_font("Helvetica", "B", 32)
         pdf.set_text_color(13, 43, 78)
-        pdf.cell(0, 15, "CAVA", ln=True, align="C")
+        pdf.cell(0, 15, "🔧 CAVA", ln=True, align="C")
 
         pdf.set_font("Helvetica", "", 14)
         pdf.set_text_color(30, 95, 142)
@@ -1596,7 +1443,7 @@ class PDFReport(FPDF):
 
 
 # ============================================================================
-# SECCIÓN 10: PANTALLA PRINCIPAL - DASHBOARD
+# SECCIÓN 11: PANTALLA PRINCIPAL - DASHBOARD
 # ============================================================================
 
 def render_dashboard():
@@ -1612,7 +1459,6 @@ def render_dashboard():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Estadísticas ---
     reports = st.session_state.get("local_reports", [])
     total_reports = len(reports)
     reports_today = sum(
@@ -1647,7 +1493,7 @@ def render_dashboard():
         </div>
         """, unsafe_allow_html=True)
     with col4:
-        gemini_status = "✅" if st.session_state.get("gemini_api_key") else "️"
+        gemini_status = "✅" if st.session_state.get("gemini_api_key") else "⚠️"
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-number">{gemini_status}</div>
@@ -1657,7 +1503,6 @@ def render_dashboard():
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-    # --- Accesos rápidos ---
     st.subheader("⚡ Accesos Rápidos")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1666,18 +1511,18 @@ def render_dashboard():
             st.session_state.selected_report_type = TIPO_REPORTE_MANTENIMIENTO
             st.rerun()
     with col2:
-        if st.button("📊 Nuevo Informe Ejecutivo", use_container_width=True, type="primary"):
+        if st.button(" Nuevo Informe Ejecutivo", use_container_width=True, type="primary"):
             st.session_state.current_page = "Nuevo Informe"
             st.session_state.selected_report_type = TIPO_INFORME_EJECUTIVO
             st.rerun()
     with col3:
-        if st.button(" Ver Informes Guardados", use_container_width=True):
+        if st.button("📂 Ver Informes Guardados", use_container_width=True):
             st.session_state.current_page = "Informes Guardados"
             st.rerun()
 
 
 # ============================================================================
-# SECCIÓN 11: PANTALLA DE CREACIÓN DE INFORMES
+# SECCIÓN 12: PANTALLA DE CREACIÓN DE INFORMES
 # ============================================================================
 
 def render_new_report():
@@ -1692,7 +1537,6 @@ def render_new_report():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Paso 1: Tipo de informe ---
     st.subheader("1️⃣ Tipo de Documento")
     report_type = st.radio(
         "Seleccione el tipo de documento a generar:",
@@ -1708,7 +1552,6 @@ def render_new_report():
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-    # --- Paso 2: Datos generales obligatorios ---
     st.subheader("2️⃣ Datos Generales del Informe")
 
     col1, col2 = st.columns(2)
@@ -1736,7 +1579,7 @@ def render_new_report():
 
     with col2:
         numero_ot = st.text_input(
-            " Número de OT (Orden de Trabajo) *",
+            "📄 Número de OT (Orden de Trabajo) *",
             placeholder="Ej: OT-2026-00123",
             key="numero_ot_input"
         )
@@ -1746,12 +1589,12 @@ def render_new_report():
             key="equipo_nombre_input"
         )
         equipo_tag = st.text_input(
-            "️ Tag / Código del Equipo *",
+            "🏷️ Tag / Código del Equipo *",
             placeholder="Ej: P-201A",
             key="equipo_tag_input"
         )
         prioridad = st.selectbox(
-            " Prioridad *",
+            "🚨 Prioridad *",
             PRIORIDADES,
             key="prioridad_selector"
         )
@@ -1783,7 +1626,6 @@ def render_new_report():
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-    # --- Paso 3: Descripción del técnico ---
     st.subheader("3️⃣ Descripción de la Intervención (Campo Principal)")
 
     st.markdown(f"""
@@ -1812,13 +1654,12 @@ def render_new_report():
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-    # --- Paso 4: Carga de imágenes ---
     st.subheader("4️⃣ Registro Fotográfico")
 
     ImageManager.initialize_image_counter()
 
     uploaded_files = st.file_uploader(
-        " Cargar imágenes de la intervención",
+        "📷 Cargar imágenes de la intervención",
         type=["png", "jpg", "jpeg", "webp"],
         accept_multiple_files=True,
         key="image_uploader"
@@ -1832,7 +1673,7 @@ def render_new_report():
             ]
             if file.name not in existing_names:
                 img_desc = st.text_input(
-                    f"📝 Descripción obligatoria para: **{file.name}** *",
+                    f" Descripción obligatoria para: **{file.name}** *",
                     placeholder="Describa qué se observa en la imagen...",
                     key=f"img_desc_{file.name}"
                 )
@@ -1864,7 +1705,6 @@ def render_new_report():
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-    # --- Paso 5: Generar informe ---
     st.subheader("5️⃣ Generar Informe")
 
     col1, col2 = st.columns(2)
@@ -1897,7 +1737,7 @@ def render_new_report():
 
         if errors:
             for err in errors:
-                st.error(f"⚠️ {err}")
+                st.error(f"️ {err}")
             return
 
         additional_context = {
@@ -1941,7 +1781,7 @@ def render_new_report():
 
     if "generated_report" in st.session_state and st.session_state.generated_report:
         st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-        st.subheader("📋 Vista Previa del Informe Generado")
+        st.subheader(" Vista Previa del Informe Generado")
 
         st.markdown(st.session_state.generated_report)
 
@@ -1959,7 +1799,7 @@ def render_new_report():
                     ImageManager.get_all_images()
                 )
                 st.download_button(
-                    label=" Descargar Word (.docx)",
+                    label="📥 Descargar Word (.docx)",
                     data=word_buffer,
                     file_name=f"{st.session_state.generated_report_number}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -1977,7 +1817,7 @@ def render_new_report():
                     ImageManager.get_all_images()
                 )
                 st.download_button(
-                    label="📥 Descargar PDF",
+                    label=" Descargar PDF",
                     data=pdf_buffer,
                     file_name=f"{st.session_state.generated_report_number}.pdf",
                     mime="application/pdf",
@@ -1988,7 +1828,7 @@ def render_new_report():
 
         with col3:
             if st.button("🌐 Traducir al Inglés", use_container_width=True):
-                with st.spinner("🌐 Traduciendo informe al inglés..."):
+                with st.spinner(" Traduciendo informe al inglés..."):
                     gemini = GeminiAIManager()
                     translated = gemini.translate_report(
                         st.session_state.generated_report
@@ -2052,7 +1892,7 @@ def render_new_report():
                         is_english=True
                     )
                     st.download_button(
-                        label=" Descargar PDF en Inglés",
+                        label="📥 Descargar PDF en Inglés",
                         data=pdf_en,
                         file_name=f"{st.session_state.generated_report_number}_EN.pdf",
                         mime="application/pdf",
@@ -2063,7 +1903,7 @@ def render_new_report():
 
 
 # ============================================================================
-# SECCIÓN 12: PANTALLA DE INFORMES GUARDADOS
+# SECCIÓN 13: PANTALLA DE INFORMES GUARDADOS
 # ============================================================================
 
 def render_saved_reports():
@@ -2079,7 +1919,7 @@ def render_saved_reports():
     reports = sb.get_reports()
 
     if not reports:
-        st.info("📭 No hay informes guardados aún. Cree su primer informe desde el menú principal.")
+        st.info(" No hay informes guardados aún. Cree su primer informe desde el menú principal.")
         return
 
     st.markdown(f"**Total de informes almacenados:** {len(reports)}")
@@ -2102,12 +1942,12 @@ def render_saved_reports():
                 st.markdown(f"**Imágenes:** {report.get('imagenes_count', 0)}")
 
             with col2:
-                if st.button("️ Ver", key=f"view_{i}"):
+                if st.button("👁️ Ver", key=f"view_{i}"):
                     st.session_state.viewing_report = report
                     st.rerun()
 
             with col3:
-                if st.button("🗑️ Eliminar", key=f"del_{i}"):
+                if st.button("️ Eliminar", key=f"del_{i}"):
                     sb.delete_report(report.get("id", ""))
                     st.success("Informe eliminado.")
                     st.rerun()
@@ -2141,7 +1981,7 @@ def render_saved_reports():
                             report.get("tipo", "")
                         )
                         st.download_button(
-                            "📥 PDF",
+                            " PDF",
                             data=pb,
                             file_name=f"{report.get('numero', 'reporte')}.pdf",
                             mime="application/pdf",
@@ -2152,14 +1992,14 @@ def render_saved_reports():
 
 
 # ============================================================================
-# SECCIÓN 13: PANTALLA DE CONFIGURACIÓN
+# SECCIÓN 14: PANTALLA DE CONFIGURACIÓN
 # ============================================================================
 
 def render_settings():
     """Renderiza la pantalla de configuración del sistema."""
     st.markdown(f"""
     <div class="main-header">
-        <h1>⚙️ Configuración del Sistema</h1>
+        <h1>️ Configuración del Sistema</h1>
         <p>Configure las APIs, conexión a base de datos y preferencias del sistema.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -2185,7 +2025,11 @@ def render_settings():
     if st.button("💾 Guardar API Key de Gemini", key="save_gemini"):
         if gemini_key.strip():
             st.session_state.gemini_api_key = gemini_key.strip()
-            st.success("✅ API Key de Gemini guardada correctamente.")
+            # Guardar en archivo persistente
+            config = ConfigPersistence.load_config()
+            config["gemini_api_key"] = gemini_key.strip()
+            ConfigPersistence.save_config(config)
+            st.success("✅ API Key de Gemini guardada correctamente (persistente).")
             st.rerun()
         else:
             st.warning("⚠️ Ingrese una API Key válida.")
@@ -2194,7 +2038,7 @@ def render_settings():
     if gemini.is_configured():
         st.success("✅ Gemini AI está configurado y operativo.")
     else:
-        st.warning("️ Gemini AI no está configurado. Los informes se generarán con plantilla base.")
+        st.warning("⚠️ Gemini AI no está configurado. Los informes se generarán con plantilla base.")
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
@@ -2228,7 +2072,12 @@ def render_settings():
         if supabase_url.strip() and supabase_key.strip():
             st.session_state.supabase_url = supabase_url.strip()
             st.session_state.supabase_key = supabase_key.strip()
-            st.success("✅ Configuración de Supabase guardada.")
+            # Guardar en archivo persistente
+            config = ConfigPersistence.load_config()
+            config["supabase_url"] = supabase_url.strip()
+            config["supabase_key"] = supabase_key.strip()
+            ConfigPersistence.save_config(config)
+            st.success("✅ Configuración de Supabase guardada (persistente).")
             st.rerun()
         else:
             st.warning("⚠️ Complete ambos campos.")
@@ -2289,13 +2138,13 @@ def render_settings():
                 st.success(f"✅ Usuario '{new_username}' registrado exitosamente.")
                 st.rerun()
             else:
-                st.error("❌ El usuario ya existe.")
+                st.error(" El usuario ya existe.")
         else:
             st.warning("⚠️ Complete todos los campos.")
 
 
 # ============================================================================
-# SECCIÓN 14: PANTALLA DE AYUDA
+# SECCIÓN 15: PANTALLA DE AYUDA
 # ============================================================================
 
 def render_help():
@@ -2307,7 +2156,7 @@ def render_help():
     </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📖 ¿Cómo funciona el sistema?")
+    st.subheader(" ¿Cómo funciona el sistema?")
     st.markdown("""
     Este sistema está diseñado para facilitar la generación de informes técnicos
     y ejecutivos de mantenimiento. El flujo de trabajo es el siguiente:
@@ -2343,7 +2192,7 @@ def render_help():
           causa raíz, costos, recomendaciones
         """)
 
-    st.subheader(" Requisitos Técnicos")
+    st.subheader("🔧 Requisitos Técnicos")
     st.markdown("""
     - **API de Gemini:** Necesaria para generación inteligente de informes.
       Obtenga su clave en [Google AI Studio](https://aistudio.google.com/app/apikey).
@@ -2385,15 +2234,14 @@ def render_help():
 
 
 # ============================================================================
-# SECCIÓN 15: SIDEBAR Y NAVEGACIÓN (CORREGIDO)
+# SECCIÓN 16: SIDEBAR Y NAVEGACIÓN
 # ============================================================================
 
 def render_sidebar():
-    """Renderiza la barra lateral de navegación con colores legibles."""
+    """Renderiza la barra lateral de navegación."""
     user = st.session_state.get("current_user", {})
 
     with st.sidebar:
-        # --- Encabezado del sidebar con identidad visual ---
         st.markdown(f"""
         <div style="text-align:center; padding: 20px 10px;
                     border-bottom: 2px solid {COLOR_PRIMARY};
@@ -2408,7 +2256,6 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # --- Información del usuario ---
         st.markdown(f"""
         <div style="padding: 12px; background: {COLOR_WHITE};
                     border-radius: 8px; margin-bottom: 15px;
@@ -2423,7 +2270,6 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # --- Navegación ---
         st.markdown("### 📌 Navegación")
 
         page = st.radio(
@@ -2431,8 +2277,8 @@ def render_sidebar():
             [
                 "📊 Dashboard",
                 "📝 Nuevo Informe",
-                "📂 Informes Guardados",
-                "⚙️ Configuración",
+                " Informes Guardados",
+                "️ Configuración",
                 "❓ Ayuda"
             ],
             key="sidebar_nav",
@@ -2441,16 +2287,15 @@ def render_sidebar():
 
         page_map = {
             "📊 Dashboard": "Dashboard",
-            " Nuevo Informe": "Nuevo Informe",
+            "📝 Nuevo Informe": "Nuevo Informe",
             "📂 Informes Guardados": "Informes Guardados",
-            "⚙️ Configuración": "Configuración",
+            "️ Configuración": "Configuración",
             "❓ Ayuda": "Ayuda"
         }
         st.session_state.current_page = page_map.get(page, "Dashboard")
 
         st.markdown("---")
 
-        # --- Estado de servicios ---
         st.markdown("### 🔌 Estado de Servicios")
 
         gemini = GeminiAIManager()
@@ -2499,7 +2344,6 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # --- Botón de cerrar sesión ---
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.current_user = None
@@ -2508,7 +2352,6 @@ def render_sidebar():
             ImageManager.clear_all_images()
             st.rerun()
 
-        # --- Créditos ---
         st.markdown("---")
         st.markdown(f"""
         <div style="text-align:center; padding: 15px 5px;">
@@ -2529,7 +2372,7 @@ def render_sidebar():
 
 
 # ============================================================================
-# SECCIÓN 16: RENDERIZADO DEL FOOTER
+# SECCIÓN 17: RENDERIZADO DEL FOOTER
 # ============================================================================
 
 def render_footer():
@@ -2548,7 +2391,7 @@ def render_footer():
 
 
 # ============================================================================
-# SECCIÓN 17: INICIALIZACIÓN DEL SESSION STATE
+# SECCIÓN 18: INICIALIZACIÓN DEL SESSION STATE
 # ============================================================================
 
 def initialize_session_state():
@@ -2584,9 +2427,23 @@ def initialize_session_state():
         if key not in st.session_state:
             st.session_state[key] = value
 
+    # Cargar configuración persistente
+    config = ConfigPersistence.load_config()
+    if config:
+        if "gemini_api_key" in config and not st.session_state.gemini_api_key:
+            st.session_state.gemini_api_key = config["gemini_api_key"]
+        if "supabase_url" in config and not st.session_state.supabase_url:
+            st.session_state.supabase_url = config["supabase_url"]
+        if "supabase_key" in config and not st.session_state.supabase_key:
+            st.session_state.supabase_key = config["supabase_key"]
+
+    # Cargar informes persistentes
+    if not st.session_state.local_reports:
+        st.session_state.local_reports = ConfigPersistence.load_reports()
+
 
 # ============================================================================
-# SECCIÓN 18: FUNCIÓN PRINCIPAL DE LA APLICACIÓN
+# SECCIÓN 19: FUNCIÓN PRINCIPAL DE LA APLICACIÓN
 # ============================================================================
 
 def main():
@@ -2620,7 +2477,7 @@ def main():
 
 
 # ============================================================================
-# SECCIÓN 19: PUNTO DE ENTRADA
+# SECCIÓN 20: PUNTO DE ENTRADA
 # ============================================================================
 
 if __name__ == "__main__":
