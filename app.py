@@ -1,7 +1,7 @@
 # ============================================================================
-# CAVA - SISTEMA DE GESTIÓN DE INFORMES DE MANTENIMIENTO v2.2
+# CAVA - SISTEMA DE GESTIÓN DE INFORMES DE MANTENIMIENTO v2.3
 # Diseñado por: CAVA Especialistas en Robótica y Automatización - Roger Huamani
-# Versión: 2.2 (Corrección de navegación y persistencia de configuración)
+# Versión: 2.3 (Corrección de PDF Unicode, Modelo Gemini Gratuito y Cálculos de Ingeniería)
 # Fecha: Septiembre 2026
 # ============================================================================
 
@@ -48,7 +48,7 @@ st.set_page_config(
 
 # --- Constantes de la aplicación ---
 APP_NAME = "CAVA - Sistema de Gestión de Informes de Mantenimiento"
-APP_VERSION = "2.2"
+APP_VERSION = "2.3"
 APP_AUTHOR = "CAVA Especialistas en Robótica y Automatización - Roger Huamani"
 APP_YEAR = "2026"
 
@@ -98,21 +98,11 @@ TURNOS = ["Día (06:00-14:00)", "Tarde (14:00-22:00)", "Noche (22:00-06:00)", "A
 
 # --- Áreas comunes de planta ---
 AREAS_PLANTA = [
-    "Producción Principal",
-    "Empaque y Embalaje",
-    "Almacén de Materia Prima",
-    "Almacén de Producto Terminado",
-    "Sala de Máquinas",
-    "Subestación Eléctrica",
-    "Planta de Agua",
-    "Calderas",
-    "Compresores",
-    "Taller Mecánico",
-    "Taller Eléctrico",
-    "Oficinas Administrativas",
-    "Laboratorio de Calidad",
-    "Área de Servicios Generales",
-    "Otra (Especificar)"
+    "Producción Principal", "Empaque y Embalaje", "Almacén de Materia Prima",
+    "Almacén de Producto Terminado", "Sala de Máquinas", "Subestación Eléctrica",
+    "Planta de Agua", "Calderas", "Compresores", "Taller Mecánico",
+    "Taller Eléctrico", "Oficinas Administrativas", "Laboratorio de Calidad",
+    "Área de Servicios Generales", "Otra (Especificar)"
 ]
 
 # --- Disciplinas ---
@@ -122,73 +112,75 @@ DISCIPLINAS = ["Mecánica", "Eléctrica", "Electrónica", "Instrumentación", "A
 DEFAULT_USERS = {
     "admin": {
         "password_hash": bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        "nombre": "Administrador",
-        "rol": "Superintendente",
-        "activo": True
+        "nombre": "Administrador", "rol": "Superintendente", "activo": True
     },
     "rhvamani": {
         "password_hash": bcrypt.hashpw("cava2026".encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        "nombre": "Roger Huamani",
-        "rol": "Jefe de Mantenimiento",
-        "activo": True
+        "nombre": "Roger Huamani", "rol": "Jefe de Mantenimiento", "activo": True
     },
     "tecnico1": {
         "password_hash": bcrypt.hashpw("tecnico123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        "nombre": "Técnico Mecánico",
-        "rol": "Técnico",
-        "activo": True
+        "nombre": "Técnico Mecánico", "rol": "Técnico", "activo": True
     }
 }
 
 # ============================================================================
-# SECCIÓN 2: SISTEMA DE PERSISTENCIA DE CONFIGURACIÓN
+# SECCIÓN 2: UTILIDADES Y PERSISTENCIA
 # ============================================================================
+
+def clean_text_for_pdf(text: str) -> str:
+    """Limpia el texto de emojis y caracteres no soportados por fuentes estándar PDF (latin-1)."""
+    if not isinstance(text, str):
+        text = str(text)
+    cleaned = []
+    for char in text:
+        try:
+            char.encode('latin-1')
+            cleaned.append(char)
+        except UnicodeEncodeError:
+            cleaned.append(' ') # Reemplazar emoji con espacio para no pegar palabras
+    return re.sub(r'\s+', ' ', ''.join(cleaned)).strip()
+
 
 class ConfigPersistence:
     """Gestiona la persistencia de configuraciones en archivos JSON."""
 
     @staticmethod
     def load_config() -> dict:
-        """Carga la configuración desde el archivo JSON."""
         if CONFIG_FILE.exists():
             try:
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except Exception as e:
-                print(f"Error al cargar configuración: {e}")
+            except Exception:
+                pass
         return {}
 
     @staticmethod
     def save_config(config: dict):
-        """Guarda la configuración en el archivo JSON."""
         try:
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             return True
-        except Exception as e:
-            print(f"Error al guardar configuración: {e}")
+        except Exception:
             return False
 
     @staticmethod
     def load_reports() -> list:
-        """Carga los informes desde el archivo JSON."""
         if REPORTS_FILE.exists():
             try:
                 with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except Exception as e:
-                print(f"Error al cargar informes: {e}")
+            except Exception:
+                pass
         return []
 
     @staticmethod
     def save_reports(reports: list):
-        """Guarda los informes en el archivo JSON."""
         try:
             with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(reports, f, indent=2, ensure_ascii=False)
             return True
-        except Exception as e:
-            print(f"Error al guardar informes: {e}")
+        except Exception:
             return False
 
 
@@ -197,165 +189,28 @@ class ConfigPersistence:
 # ============================================================================
 
 def aplicar_estilos_css():
-    """Aplica estilos CSS profesionales con contraste normativo."""
     st.markdown(f"""
     <style>
-        .stApp {{
-            background-color: {COLOR_BG_LIGHT};
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }}
-
-        [data-testid="stSidebar"] {{
-            background-color: {COLOR_SIDEBAR} !important;
-            border-right: 4px solid {COLOR_SIDEBAR_BORDER};
-        }}
-
-        [data-testid="stSidebar"] .stMarkdown {{
-            color: {COLOR_TEXT_DARK} !important;
-        }}
-
-        [data-testid="stSidebar"] label {{
-            color: {COLOR_TEXT_DARK} !important;
-            font-weight: 600;
-        }}
-
-        .main-header {{
-            background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%);
-            padding: 25px 30px;
-            border-radius: 12px;
-            color: {COLOR_WHITE};
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(13, 43, 78, 0.25);
-        }}
-
-        .main-header h1 {{
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: {COLOR_WHITE};
-        }}
-
-        .main-header p {{
-            margin: 8px 0 0 0;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.95);
-        }}
-
-        .stat-card {{
-            background: {COLOR_BG_CARD};
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border-top: 4px solid {COLOR_SECONDARY};
-        }}
-
-        .stat-card:hover {{
-            transform: translateY(-3px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
-        }}
-
-        .stat-card .stat-number {{
-            font-size: 36px;
-            font-weight: 700;
-            color: {COLOR_PRIMARY};
-        }}
-
-        .stat-card .stat-label {{
-            font-size: 13px;
-            color: {COLOR_TEXT_SECONDARY};
-            margin-top: 5px;
-            font-weight: 500;
-        }}
-
-        .login-container {{
-            max-width: 450px;
-            margin: 0 auto;
-            padding: 40px;
-            background: {COLOR_WHITE};
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            border-top: 5px solid {COLOR_PRIMARY};
-        }}
-
-        .login-logo {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-
-        .login-logo h2 {{
-            color: {COLOR_PRIMARY};
-            font-size: 24px;
-            margin-bottom: 5px;
-        }}
-
-        .login-logo p {{
-            color: {COLOR_TEXT_SECONDARY};
-            font-size: 13px;
-        }}
-
-        .footer {{
-            background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%);
-            padding: 20px 30px;
-            border-radius: 12px;
-            color: {COLOR_WHITE};
-            text-align: center;
-            margin-top: 30px;
-        }}
-
-        .footer p {{
-            margin: 3px 0;
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.95);
-        }}
-
-        .footer .brand {{
-            font-size: 15px;
-            font-weight: 700;
-            color: {COLOR_ACCENT};
-        }}
-
-        .custom-divider {{
-            height: 2px;
-            background: linear-gradient(90deg, transparent, {COLOR_SECONDARY}, transparent);
-            margin: 20px 0;
-        }}
-
-        .custom-alert {{
-            background: {COLOR_INFO_BG};
-            border-left: 4px solid {COLOR_INFO};
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin: 10px 0;
-            color: {COLOR_TEXT_DARK};
-        }}
-
-        .stButton > button {{
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.2s;
-            border: 1px solid {COLOR_BORDER};
-        }}
-
-        .stButton > button:hover {{
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-        }}
-
-        #MainMenu {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        header {{visibility: hidden;}}
-
-        @media (max-width: 768px) {{
-            .main-header h1 {{
-                font-size: 20px;
-            }}
-            .stat-card .stat-number {{
-                font-size: 28px;
-            }}
-        }}
+        .stApp {{ background-color: {COLOR_BG_LIGHT}; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
+        [data-testid="stSidebar"] {{ background-color: {COLOR_SIDEBAR} !important; border-right: 4px solid {COLOR_SIDEBAR_BORDER}; }}
+        [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label {{ color: {COLOR_TEXT_DARK} !important; font-weight: 600; }}
+        .main-header {{ background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%); padding: 25px 30px; border-radius: 12px; color: {COLOR_WHITE}; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(13, 43, 78, 0.25); }}
+        .main-header h1 {{ margin: 0; font-size: 28px; font-weight: 700; color: {COLOR_WHITE}; }}
+        .main-header p {{ margin: 8px 0 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.95); }}
+        .stat-card {{ background: {COLOR_BG_CARD}; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-top: 4px solid {COLOR_SECONDARY}; }}
+        .stat-card .stat-number {{ font-size: 36px; font-weight: 700; color: {COLOR_PRIMARY}; }}
+        .stat-card .stat-label {{ font-size: 13px; color: {COLOR_TEXT_SECONDARY}; margin-top: 5px; font-weight: 500; }}
+        .login-container {{ max-width: 450px; margin: 0 auto; padding: 40px; background: {COLOR_WHITE}; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-top: 5px solid {COLOR_PRIMARY}; }}
+        .login-logo {{ text-align: center; margin-bottom: 30px; }}
+        .login-logo h2 {{ color: {COLOR_PRIMARY}; font-size: 24px; margin-bottom: 5px; }}
+        .login-logo p {{ color: {COLOR_TEXT_SECONDARY}; font-size: 13px; }}
+        .footer {{ background: linear-gradient(135deg, {COLOR_PRIMARY} 0%, {COLOR_SECONDARY} 100%); padding: 20px 30px; border-radius: 12px; color: {COLOR_WHITE}; text-align: center; margin-top: 30px; }}
+        .footer p {{ margin: 3px 0; font-size: 13px; color: rgba(255, 255, 255, 0.95); }}
+        .footer .brand {{ font-size: 15px; font-weight: 700; color: {COLOR_ACCENT}; }}
+        .custom-divider {{ height: 2px; background: linear-gradient(90deg, transparent, {COLOR_SECONDARY}, transparent); margin: 20px 0; }}
+        .custom-alert {{ background: {COLOR_INFO_BG}; border-left: 4px solid {COLOR_INFO}; border-radius: 8px; padding: 15px 20px; margin: 10px 0; color: {COLOR_TEXT_DARK}; }}
+        .stButton > button {{ border-radius: 8px; font-weight: 600; transition: all 0.2s; border: 1px solid {COLOR_BORDER}; }}
+        #MainMenu, footer, header {{ visibility: hidden; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -365,80 +220,51 @@ def aplicar_estilos_css():
 # ============================================================================
 
 class AuthenticationManager:
-    """Gestiona la autenticación de usuarios del sistema."""
-
     def __init__(self):
         self.users = self._load_users()
 
     def _load_users(self):
-        """Carga los usuarios desde session_state o usa los por defecto."""
         if "registered_users" not in st.session_state:
             st.session_state.registered_users = DEFAULT_USERS.copy()
         return st.session_state.registered_users
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verifica si la contraseña coincide con el hash almacenado."""
         try:
-            return bcrypt.checkpw(
-                plain_password.encode('utf-8'),
-                hashed_password.encode('utf-8')
-            )
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
         except Exception:
             return False
 
     def authenticate(self, username: str, password: str) -> dict:
-        """Autentica un usuario."""
         username = username.strip().lower()
         if username in self.users:
             user_data = self.users[username]
-            if user_data.get("activo", False):
-                if self.verify_password(password, user_data["password_hash"]):
-                    return {
-                        "username": username,
-                        "nombre": user_data["nombre"],
-                        "rol": user_data["rol"]
-                    }
+            if user_data.get("activo", False) and self.verify_password(password, user_data["password_hash"]):
+                return {"username": username, "nombre": user_data["nombre"], "rol": user_data["rol"]}
         return None
 
     def register_user(self, username: str, password: str, nombre: str, rol: str) -> bool:
-        """Registra un nuevo usuario."""
         username = username.strip().lower()
         if username in self.users:
             return False
-        password_hash = bcrypt.hashpw(
-            password.encode('utf-8'),
-            bcrypt.gensalt()
-        ).decode('utf-8')
-        self.users[username] = {
-            "password_hash": password_hash,
-            "nombre": nombre,
-            "rol": rol,
-            "activo": True
-        }
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        self.users[username] = {"password_hash": password_hash, "nombre": nombre, "rol": rol, "activo": True}
         st.session_state.registered_users = self.users
         return True
 
     def get_all_users(self) -> dict:
-        """Retorna todos los usuarios registrados."""
         return self.users
 
 
 def render_login_screen():
-    """Renderiza la pantalla de inicio de sesión."""
     st.markdown(f"""
     <div style="text-align:center; padding: 40px 0 20px 0;">
-        <h1 style="color:{COLOR_PRIMARY}; font-size:32px; margin-bottom:5px;"> CAVA</h1>
-        <p style="color:{COLOR_TEXT_SECONDARY}; font-size:14px;">
-            Especialistas en Robótica y Automatización
-        </p>
-        <p style="color:{COLOR_SECONDARY}; font-size:12px; margin-top:2px;">
-            Sistema de Gestión de Informes de Mantenimiento v{APP_VERSION}
-        </p>
+        <h1 style="color:{COLOR_PRIMARY}; font-size:32px; margin-bottom:5px;">CAVA</h1>
+        <p style="color:{COLOR_TEXT_SECONDARY}; font-size:14px;">Especialistas en Robótica y Automatización</p>
+        <p style="color:{COLOR_SECONDARY}; font-size:12px; margin-top:2px;">Sistema de Gestión de Informes de Mantenimiento v{APP_VERSION}</p>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
-
     with col2:
         st.markdown(f"""
         <div class="login-container">
@@ -450,22 +276,9 @@ def render_login_screen():
         """, unsafe_allow_html=True)
 
         with st.form("login_form", clear_on_submit=False):
-            username = st.text_input(
-                " Usuario",
-                placeholder="Ingrese su usuario",
-                key="login_username"
-            )
-            password = st.text_input(
-                "🔑 Contraseña",
-                type="password",
-                placeholder="Ingrese su contraseña",
-                key="login_password"
-            )
-            submit = st.form_submit_button(
-                "Ingresar al Sistema",
-                use_container_width=True,
-                type="primary"
-            )
+            username = st.text_input(" Usuario", placeholder="Ingrese su usuario", key="login_username")
+            password = st.text_input("🔑 Contraseña", type="password", placeholder="Ingrese su contraseña", key="login_password")
+            submit = st.form_submit_button("Ingresar al Sistema", use_container_width=True, type="primary")
 
             if submit:
                 if not username or not password:
@@ -483,10 +296,7 @@ def render_login_screen():
                         st.error("❌ Usuario o contraseña incorrectos.")
 
         st.markdown("---")
-        st.caption(
-            " Credenciales de prueba: admin / admin123 | "
-            "rhvamani / cava2026 | tecnico1 / tecnico123"
-        )
+        st.caption(" Credenciales de prueba: admin / admin123 | rhvamani / cava2026 | tecnico1 / tecnico123")
 
 
 # ============================================================================
@@ -494,15 +304,12 @@ def render_login_screen():
 # ============================================================================
 
 class SupabaseManager:
-    """Gestiona la conexión y operaciones con Supabase."""
-
     def __init__(self):
         self.client = None
         self.connected = False
         self._initialize_connection()
 
     def _initialize_connection(self):
-        """Inicializa la conexión con Supabase."""
         url = st.session_state.get("supabase_url", "")
         key = st.session_state.get("supabase_key", "")
         if url and key:
@@ -514,11 +321,9 @@ class SupabaseManager:
                 st.session_state.supabase_error = str(e)
 
     def is_connected(self) -> bool:
-        """Verifica si la conexión está activa."""
         return self.connected and self.client is not None
 
     def save_report(self, report_data: dict) -> bool:
-        """Guarda un informe en Supabase o localmente."""
         if not self.is_connected():
             return self._save_local(report_data)
         try:
@@ -529,34 +334,24 @@ class SupabaseManager:
             return self._save_local(report_data)
 
     def get_reports(self, limit: int = 100) -> list:
-        """Obtiene los informes almacenados."""
         if not self.is_connected():
             return self._get_local_reports()
         try:
-            result = self.client.table("informes_mantenimiento") \
-                .select("*") \
-                .order("fecha_creacion", desc=True) \
-                .limit(limit) \
-                .execute()
+            result = self.client.table("informes_mantenimiento").select("*").order("fecha_creacion", desc=True).limit(limit).execute()
             return result.data if result.data else []
         except Exception:
             return self._get_local_reports()
 
     def delete_report(self, report_id: str) -> bool:
-        """Elimina un informe."""
         if not self.is_connected():
             return self._delete_local_report(report_id)
         try:
-            self.client.table("informes_mantenimiento") \
-                .delete() \
-                .eq("id", report_id) \
-                .execute()
+            self.client.table("informes_mantenimiento").delete().eq("id", report_id).execute()
             return True
         except Exception:
             return self._delete_local_report(report_id)
 
     def _save_local(self, report_data: dict) -> bool:
-        """Guarda localmente cuando Supabase no está configurado."""
         reports = ConfigPersistence.load_reports()
         report_data["storage"] = "local"
         reports.insert(0, report_data)
@@ -565,13 +360,11 @@ class SupabaseManager:
         return True
 
     def _get_local_reports(self) -> list:
-        """Obtiene informes del almacenamiento local."""
         reports = ConfigPersistence.load_reports()
         st.session_state.local_reports = reports
         return reports
 
     def _delete_local_report(self, report_id: str) -> bool:
-        """Elimina un informe local."""
         reports = ConfigPersistence.load_reports()
         reports = [r for r in reports if r.get("id") != report_id]
         ConfigPersistence.save_reports(reports)
@@ -584,33 +377,24 @@ class SupabaseManager:
 # ============================================================================
 
 class GeminiAIManager:
-    """Gestiona la integración con la API de Google Gemini."""
-
     def __init__(self):
         self.model = None
         self.api_key = st.session_state.get("gemini_api_key", "")
         self._initialize_model()
 
     def _initialize_model(self):
-        """Inicializa el modelo de Gemini."""
         if self.api_key:
             try:
+                # Modelo gratuito, estable y con soporte de contexto largo
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-2.0-flash')
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
             except Exception as e:
                 st.session_state.gemini_error = str(e)
 
     def is_configured(self) -> bool:
-        """Verifica si la API está configurada."""
         return self.model is not None and self.api_key != ""
 
-    def generate_report_content(
-        self,
-        raw_description: str,
-        report_type: str,
-        additional_context: dict = None
-    ) -> str:
-        """Genera el contenido estructurado del informe usando Gemini AI."""
+    def generate_report_content(self, raw_description: str, report_type: str, additional_context: dict = None) -> str:
         if not self.is_configured():
             return self._generate_fallback_report(raw_description, report_type, additional_context)
 
@@ -633,22 +417,19 @@ class GeminiAIManager:
             return self._generate_fallback_report(raw_description, report_type, additional_context)
 
     def _build_report_prompt(self, raw_description: str, context_info: str) -> str:
-        """Construye el prompt para un Reporte de Mantenimiento."""
         return f"""
-Eres un Jefe de Mantenimiento y Planificador experto con más de 20 años de experiencia
-en gestión de activos industriales. Tu tarea es redactar un Reporte de Mantenimiento
-profesional, técnico y estructurado.
+Eres un Jefe de Mantenimiento y Planificador experto con más de 20 años de experiencia en gestión de activos industriales. 
+Tu tarea es redactar un Reporte de Mantenimiento profesional, técnico y estructurado.
 
 INSTRUCCIONES CRÍTICAS:
-1. Redacta con un tono técnico, objetivo y profesional, como si fuera escrito por
-   un ingeniero de mantenimiento senior.
+1. Redacta con un tono técnico, objetivo y profesional, como si fuera escrito por un ingeniero de mantenimiento senior.
 2. El lenguaje debe ser humanizado pero preciso. Sin errores ortográficos ni gramaticales.
 3. Sigue estrictamente la normativa de redacción para informes técnicos industriales.
-4. Si detectas que falta información crítica, rellena el campo con
-   "[Información no proporcionada - Completar]".
-5. Profundiza y completa cada campo con información técnica relevante basada en
-   el contexto proporcionado.
+4. Si detectas que falta información crítica, rellena el campo con "[Información no proporcionada - Completar]".
+5. Profundiza y completa cada campo con información técnica relevante basada en el contexto proporcionado.
 6. Usa terminología técnica apropiada del área de mantenimiento industrial.
+7. Si la intervención lo requiere, incluye cálculos técnicos de ingeniería relevantes (ej. torque de apriete, holguras, 
+   alineación, consumo energético, cálculos hidráulicos) con sus fórmulas, datos y resultados numéricos.
 
 DATOS PROPORCIONADOS POR EL TÉCNICO:
 \"\"\"
@@ -677,9 +458,8 @@ ESTRUCTURA OBLIGATORIA DEL REPORTE (respeta este formato exacto):
 - **Fabricante/Modelo:** [datos del fabricante]
 
 ### 3. DESCRIPCIÓN DEL PROBLEMA
-[Descripción técnica detallada del síntoma reportado, incluyendo condiciones
-de operación al momento de la falla, alarmas activas, y manifestaciones
-observadas por el operador o técnico.]
+[Descripción técnica detallada del síntoma reportado, incluyendo condiciones de operación al momento de la falla, 
+alarmas activas, y manifestaciones observadas por el operador o técnico.]
 
 ### 4. TIPO DE INTERVENCIÓN
 - **Tipo:** [Correctivo / Preventivo / Mejora / Predictivo]
@@ -687,24 +467,27 @@ observadas por el operador o técnico.]
 - **Justificación:** [breve justificación de la clasificación]
 
 ### 5. DETALLE DEL TRABAJO REALIZADO
-[Descripción técnica paso a paso de todas las actividades realizadas.
-Incluir procedimientos de seguridad aplicados (LOTO, permisos de trabajo),
-herramientas especiales utilizadas, mediciones tomadas, y criterios de
-aceptación verificados. Numerar cada paso de forma clara y secuencial.]
+[Descripción técnica paso a paso de todas las actividades realizadas. Incluir procedimientos de seguridad aplicados 
+(LOTO, permisos de trabajo), herramientas especiales utilizadas, mediciones tomadas, y criterios de aceptación verificados. 
+Numerar cada paso de forma clara y secuencial.]
 
-### 6. REPUESTOS Y MATERIALES UTILIZADOS
+### 6. CÁLCULOS TÉCNICOS DE INGENIERÍA (Si aplica)
+[Incluir aquí cualquier cálculo relevante realizado: fórmulas, valores medidos, tolerancias permitidas vs. reales, 
+torques de apriete, holguras, consumos, etc. Si no aplica, indicar "No se requirieron cálculos específicos".]
+
+### 7. REPUESTOS Y MATERIALES UTILIZADOS
 | Ítem | Descripción | Cantidad | Unidad | Código SAP |
 |------|-------------|----------|--------|------------|
 | [completar tabla] |
 
-### 7. TIEMPOS DE INTERVENCIÓN
+### 8. TIEMPOS DE INTERVENCIÓN
 - **Hora de Aviso:** [hh:mm]
 - **Hora de Inicio:** [hh:mm]
 - **Hora de Fin:** [hh:mm]
 - **Downtime Total:** [horas y minutos]
 - **Tiempo de Espera (Repuestos/Acceso):** [si aplica]
 
-### 8. ESTADO FINAL Y OBSERVACIONES
+### 9. ESTADO FINAL Y OBSERVACIONES
 - **Estado del Equipo:** [Operativo / Operativo con restricciones / Fuera de servicio]
 - **Pruebas Realizadas:** [descripción de pruebas post-intervención]
 - **Observaciones:** [cualquier observación relevante]
@@ -715,21 +498,18 @@ Redacta el documento completo ahora:
 """
 
     def _build_executive_prompt(self, raw_description: str, context_info: str) -> str:
-        """Construye el prompt para un Informe Ejecutivo de Mantenimiento."""
         return f"""
-Eres un Superintendente de Mantenimiento y Planificador experto con más de 20 años
-de experiencia en gestión de activos y confiabilidad industrial. Tu tarea es redactar
-un Informe Ejecutivo de Mantenimiento dirigido a la Gerencia de Planta.
+Eres un Superintendente de Mantenimiento y Planificador experto con más de 20 años de experiencia en gestión de activos 
+y confiabilidad industrial. Tu tarea es redactar un Informe Ejecutivo de Mantenimiento dirigido a la Gerencia de Planta.
 
 INSTRUCCIONES CRÍTICAS:
 1. Redacta con un tono ejecutivo, técnico y orientado a la gestión de activos.
 2. El lenguaje debe ser claro, directo y profesional. Sin errores ortográficos.
-3. El informe debe ser comprensible para personal de gerencia no necesariamente
-   técnico, pero con suficiente profundidad técnica.
-4. Si detectas que falta información crítica, rellena el campo con
-   "[Información no proporcionada - Completar]".
+3. El informe debe ser comprensible para personal de gerencia no necesariamente técnico, pero con suficiente profundidad técnica.
+4. Si detectas que falta información crítica, rellena el campo con "[Información no proporcionada - Completar]".
 5. Enfatiza el impacto operativo, los costos y las decisiones a tomar.
-6. Incluye métricas y KPIs relevantes cuando sea posible.
+6. Incluye métricas, KPIs relevantes y, si aplica, cálculos técnicos de ingeniería (torque, holguras, consumo energético, etc.) 
+   con sus fórmulas y resultados resumidos.
 
 DATOS PROPORCIONADOS POR EL TÉCNICO:
 \"\"\"
@@ -752,9 +532,8 @@ ESTRUCTURA OBLIGATORIA DEL INFORME EJECUTIVO (respeta este formato exacto):
 - **Dirigido a:** Gerencia de Planta / Gerencia de Operaciones
 
 ### 2. RESUMEN DEL EVENTO
-[Párrafo conciso y directo que explique qué sucedió, cuándo, dónde y cuál
-fue la magnitud del evento. Máximo 5-6 líneas. Debe captar la atención
-del lector ejecutivo inmediatamente.]
+[Párrafo conciso y directo que explique qué sucedió, cuándo, dónde y cuál fue la magnitud del evento. 
+Máximo 5-6 líneas. Debe captar la atención del lector ejecutivo inmediatamente.]
 
 ### 3. IMPACTO OPERATIVO
 - **Horas de Producción Perdidas:** [horas]
@@ -765,14 +544,13 @@ del lector ejecutivo inmediatamente.]
 - **Costo Estimado de Lucro Cesante:** [si se puede estimar]
 
 ### 4. CAUSA RAÍZ PRELIMINAR
-[Análisis técnico de la causa raíz del evento. Incluir si se aplicó
-metodología 5 Porqués, Ishikawa u otra. Diferenciar entre causa directa
-y causa raíz. Indicar si se requiere un análisis RCA formal.]
+[Análisis técnico de la causa raíz del evento. Incluir si se aplicó metodología 5 Porqués, Ishikawa u otra. 
+Diferenciar entre causa directa y causa raíz. Indicar si se requiere un análisis RCA formal.]
 
-### 5. SOLUCIÓN EJECUTADA
-[Descripción clara de las acciones tomadas para restablecer la operación.
-Incluir si fue una solución temporal o definitiva. Mencionar tiempos de
-respuesta y efectividad de la solución.]
+### 5. SOLUCIÓN EJECUTADA Y CÁLCULOS TÉCNICOS
+[Descripción clara de las acciones tomadas para restablecer la operación. Incluir si fue una solución temporal o definitiva. 
+Mencionar tiempos de respuesta, efectividad de la solución y, si aplica, cálculos de ingeniería realizados (torques, 
+holguras, consumos, etc.) con sus resultados.]
 
 ### 6. COSTOS RELEVANTES
 | Concepto | Monto Estimado | Moneda |
@@ -784,26 +562,23 @@ respuesta y efectividad de la solución.]
 | **TOTAL ESTIMADO** | **[monto]** | **[moneda]** |
 
 ### 7. ACCIONES PREVENTIVAS Y RECOMENDACIONES
-[Lista numerada de acciones concretas, con responsable sugerido y plazo
-estimado. Separar en acciones inmediatas, corto plazo y mediano plazo.
-Incluir recomendaciones sobre cambios en el plan de mantenimiento,
-mejoras de diseño, capacitación, o adquisición de repuestos críticos.]
+[Lista numerada de acciones concretas, con responsable sugerido y plazo estimado. Separar en acciones inmediatas, 
+corto plazo y mediano plazo. Incluir recomendaciones sobre cambios en el plan de mantenimiento, mejoras de diseño, 
+capacitación, o adquisición de repuestos críticos.]
 
 ### 8. CONCLUSIONES
-[2-3 párrafos de cierre que resuman la situación actual, la confiabilidad
-del equipo post-intervención, y la urgencia de las acciones recomendadas.]
+[2-3 párrafos de cierre que resuman la situación actual, la confiabilidad del equipo post-intervención, 
+y la urgencia de las acciones recomendadas.]
 
 Redacta el documento completo ahora:
 """
 
     def process_image_description(self, raw_description: str) -> str:
-        """Procesa y mejora la descripción de una imagen técnica."""
         if not self.is_configured():
             return raw_description.strip().capitalize() + "."
-
         prompt = f"""
-Eres un ingeniero de mantenimiento experto. Mejora la siguiente descripción
-de una fotografía técnica tomada durante una intervención de mantenimiento.
+Eres un ingeniero de mantenimiento experto. Mejora la siguiente descripción de una fotografía técnica tomada durante 
+una intervención de mantenimiento.
 
 INSTRUCCIONES:
 1. Corrige ortografía y gramática.
@@ -824,14 +599,12 @@ Descripción mejorada:
             return raw_description.strip().capitalize() + "."
 
     def translate_report(self, report_content: str) -> str:
-        """Traduce el informe completo al inglés."""
         if not self.is_configured():
             return "[Translation requires Gemini API configuration]"
 
         prompt = f"""
-You are a professional technical translator specializing in industrial
-maintenance documentation. Translate the following maintenance report
-from Spanish to English.
+You are a professional technical translator specializing in industrial maintenance documentation. 
+Translate the following maintenance report from Spanish to English.
 
 INSTRUCTIONS:
 1. Maintain the exact same structure and formatting.
@@ -839,6 +612,7 @@ INSTRUCTIONS:
 3. Keep all technical specifications, measurements, and codes as-is.
 4. Ensure the translation reads naturally in English.
 5. Preserve all markdown formatting (headers, tables, bold text, etc.).
+6. If engineering calculations are present, ensure the technical terms and units are correctly translated.
 
 ORIGINAL REPORT:
 \"\"\"
@@ -853,13 +627,7 @@ TRANSLATED REPORT:
         except Exception as e:
             return f"[Translation error: {e}]"
 
-    def _generate_fallback_report(
-        self,
-        raw_description: str,
-        report_type: str,
-        additional_context: dict = None
-    ) -> str:
-        """Genera un informe base cuando la IA no está configurada."""
+    def _generate_fallback_report(self, raw_description: str, report_type: str, additional_context: dict = None) -> str:
         fecha = datetime.now().strftime("%d/%m/%Y")
         ctx = additional_context or {}
 
@@ -877,8 +645,6 @@ TRANSLATED REPORT:
 - **Nombre del Equipo:** {ctx.get('equipo', '[Información no proporcionada - Completar]')}
 - **Tag/Código:** {ctx.get('tag', '[Información no proporcionada - Completar]')}
 - **Área/Ubicación:** {ctx.get('area', '[Información no proporcionada - Completar]')}
-- **Horómetro/Ciclos:** [Información no proporcionada - Completar]
-- **Fabricante/Modelo:** [Información no proporcionada - Completar]
 
 ### 3. DESCRIPCIÓN DEL PROBLEMA
 {raw_description}
@@ -886,28 +652,27 @@ TRANSLATED REPORT:
 ### 4. TIPO DE INTERVENCIÓN
 - **Tipo:** {ctx.get('tipo_intervencion', '[Información no proporcionada - Completar]')}
 - **Prioridad:** {ctx.get('prioridad', '[Información no proporcionada - Completar]')}
-- **Justificación:** [Información no proporcionada - Completar]
 
 ### 5. DETALLE DEL TRABAJO REALIZADO
-[Configure la API de Gemini para generar automáticamente este contenido
-a partir de la descripción del técnico.]
+[Configure la API de Gemini para generar automáticamente este contenido técnico detallado.]
 
-### 6. REPUESTOS Y MATERIALES UTILIZADOS
+### 6. CÁLCULOS TÉCNICOS DE INGENIERÍA
+[No se proporcionaron datos suficientes para generar cálculos. Configure la API de Gemini para asistencia.]
+
+### 7. REPUESTOS Y MATERIALES UTILIZADOS
 | Ítem | Descripción | Cantidad | Unidad | Código SAP |
 |------|-------------|----------|--------|------------|
 | 1 | [Completar] | - | - | - |
 
-### 7. TIEMPOS DE INTERVENCIÓN
+### 8. TIEMPOS DE INTERVENCIÓN
 - **Hora de Aviso:** [Información no proporcionada - Completar]
 - **Hora de Inicio:** [Información no proporcionada - Completar]
 - **Hora de Fin:** [Información no proporcionada - Completar]
 - **Downtime Total:** [Información no proporcionada - Completar]
 
-### 8. ESTADO FINAL Y OBSERVACIONES
+### 9. ESTADO FINAL Y OBSERVACIONES
 - **Estado del Equipo:** [Información no proporcionada - Completar]
 - **Pruebas Realizadas:** [Información no proporcionada - Completar]
-- **Observaciones:** [Información no proporcionada - Completar]
-- **Trabajos Pendientes:** [Información no proporcionada - Completar]
 - **Recomendaciones:** [Información no proporcionada - Completar]
 """
         else:
@@ -918,8 +683,6 @@ a partir de la descripción del técnico.]
 - **Área/Planta:** {ctx.get('area', '[Información no proporcionada - Completar]')}
 - **Equipo Crítico Afectado:** {ctx.get('equipo', '[Información no proporcionada - Completar]')}
 - **Prioridad del Evento:** {ctx.get('prioridad', '[Información no proporcionada - Completar]')}
-- **Elaborado por:** {ctx.get('elaborado_por', '[Información no proporcionada - Completar]')}
-- **Dirigido a:** Gerencia de Planta / Gerencia de Operaciones
 
 ### 2. RESUMEN DEL EVENTO
 {raw_description}
@@ -927,12 +690,11 @@ a partir de la descripción del técnico.]
 ### 3. IMPACTO OPERATIVO
 - **Horas de Producción Perdidas:** [Información no proporcionada - Completar]
 - **Nivel de Afectación:** [Información no proporcionada - Completar]
-- **Líneas/Áreas Afectadas:** [Información no proporcionada - Completar]
 
 ### 4. CAUSA RAÍZ PRELIMINAR
 [Configure la API de Gemini para generar automáticamente este análisis.]
 
-### 5. SOLUCIÓN EJECUTADA
+### 5. SOLUCIÓN EJECUTADA Y CÁLCULOS TÉCNICOS
 [Configure la API de Gemini para generar automáticamente este contenido.]
 
 ### 6. COSTOS RELEVANTES
@@ -955,26 +717,15 @@ a partir de la descripción del técnico.]
 # ============================================================================
 
 class ReportNumberGenerator:
-    """Genera números de informe correlativos automáticamente."""
-
     @staticmethod
     def generate(tipo: str) -> str:
-        """Genera un número único de informe."""
         if "report_counter" not in st.session_state:
-            st.session_state.report_counter = {
-                TIPO_REPORTE_MANTENIMIENTO: 0,
-                TIPO_INFORME_EJECUTIVO: 0
-            }
+            st.session_state.report_counter = {TIPO_REPORTE_MANTENIMIENTO: 0, TIPO_INFORME_EJECUTIVO: 0}
 
         st.session_state.report_counter[tipo] += 1
         count = st.session_state.report_counter[tipo]
         year = datetime.now().year
-
-        if tipo == TIPO_REPORTE_MANTENIMIENTO:
-            prefix = "RM"
-        else:
-            prefix = "IE"
-
+        prefix = "RM" if tipo == TIPO_REPORTE_MANTENIMIENTO else "IE"
         return f"{prefix}-{year}-{count:04d}"
 
 
@@ -983,11 +734,8 @@ class ReportNumberGenerator:
 # ============================================================================
 
 class ImageManager:
-    """Gestiona la carga, numeración y descripción de imágenes."""
-
     @staticmethod
     def initialize_image_counter():
-        """Inicializa el contador de imágenes."""
         if "image_counter" not in st.session_state:
             st.session_state.image_counter = 0
         if "uploaded_images" not in st.session_state:
@@ -995,7 +743,6 @@ class ImageManager:
 
     @staticmethod
     def add_image(image_file, description: str) -> dict:
-        """Agrega una imagen con su descripción al registro."""
         ImageManager.initialize_image_counter()
         st.session_state.image_counter += 1
         img_number = st.session_state.image_counter
@@ -1009,18 +756,15 @@ class ImageManager:
             "tipo": image_file.type,
             "fecha_carga": datetime.now().isoformat()
         }
-
         st.session_state.uploaded_images.append(image_data)
         return image_data
 
     @staticmethod
     def get_all_images() -> list:
-        """Retorna todas las imágenes cargadas."""
         return st.session_state.get("uploaded_images", [])
 
     @staticmethod
     def remove_image(index: int):
-        """Elimina una imagen por su índice."""
         images = st.session_state.get("uploaded_images", [])
         if 0 <= index < len(images):
             st.session_state.uploaded_images.pop(index)
@@ -1030,7 +774,6 @@ class ImageManager:
 
     @staticmethod
     def clear_all_images():
-        """Elimina todas las imágenes."""
         st.session_state.uploaded_images = []
         st.session_state.image_counter = 0
 
@@ -1040,24 +783,13 @@ class ImageManager:
 # ============================================================================
 
 class WordExporter:
-    """Exporta informes a formato Microsoft Word (.docx)."""
-
     @staticmethod
-    def create_document(
-        report_content: str,
-        report_number: str,
-        report_type: str,
-        images: list = None,
-        is_english: bool = False
-    ) -> io.BytesIO:
-        """Crea un documento Word profesional."""
+    def create_document(report_content: str, report_number: str, report_type: str, images: list = None, is_english: bool = False) -> io.BytesIO:
         doc = Document()
-
         style = doc.styles['Normal']
-        font = style.font
-        font.name = 'Calibri'
-        font.size = Pt(11)
-        font.color.rgb = RGBColor(26, 26, 26)
+        style.font.name = 'Calibri'
+        style.font.size = Pt(11)
+        style.font.color.rgb = RGBColor(26, 26, 26)
 
         header = doc.sections[0].header
         header_para = header.paragraphs[0]
@@ -1071,7 +803,7 @@ class WordExporter:
 
         title = doc.add_paragraph()
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title.add_run("🔧 CAVA")
+        run = title.add_run("CAVA")
         run.font.size = Pt(36)
         run.font.bold = True
         run.font.color.rgb = RGBColor(13, 43, 78)
@@ -1081,7 +813,6 @@ class WordExporter:
         run = subtitle.add_run("Especialistas en Robótica y Automatización")
         run.font.size = Pt(14)
         run.font.color.rgb = RGBColor(30, 95, 142)
-
         doc.add_paragraph()
 
         doc_title = doc.add_paragraph()
@@ -1110,14 +841,12 @@ class WordExporter:
         info_table = doc.add_table(rows=4, cols=2)
         info_table.style = 'Light Grid Accent 1'
         info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-
         info_data = [
             ("Documento:", report_type),
             ("Número:", report_number),
             ("Fecha de Emisión:", datetime.now().strftime("%d/%m/%Y %H:%M")),
             ("Autor:", st.session_state.get("current_user", {}).get("nombre", "Sistema CAVA"))
         ]
-
         for i, (label, value) in enumerate(info_data):
             info_table.rows[i].cells[0].text = label
             info_table.rows[i].cells[1].text = value
@@ -1125,7 +854,6 @@ class WordExporter:
                 for paragraph in cell.paragraphs:
                     for run in paragraph.runs:
                         run.font.size = Pt(10)
-
         doc.add_paragraph()
 
         WordExporter._add_formatted_content(doc, report_content)
@@ -1138,16 +866,11 @@ class WordExporter:
 
             for img_data in images:
                 doc.add_paragraph()
-                img_heading = doc.add_heading(
-                    f'Fotografía N° {img_data["numero"]}',
-                    level=3
-                )
-
+                doc.add_heading(f'Fotografía N° {img_data["numero"]}', level=3)
                 try:
                     image_stream = io.BytesIO(img_data["bytes"])
                     doc.add_picture(image_stream, width=Inches(5.5))
-                    last_paragraph = doc.paragraphs[-1]
-                    last_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
                 except Exception:
                     doc.add_paragraph("[Imagen no disponible]")
 
@@ -1161,10 +884,7 @@ class WordExporter:
 
         footer = doc.sections[0].footer
         footer_para = footer.paragraphs[0]
-        footer_para.text = (
-            f"CAVA Especialistas en Robótica y Automatización | "
-            f"Roger Huamani | {report_number} | Página "
-        )
+        footer_para.text = f"CAVA Especialistas en Robótica y Automatización | Roger Huamani | {report_number} | Página "
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         footer_para.style.font.size = Pt(8)
 
@@ -1175,13 +895,11 @@ class WordExporter:
 
     @staticmethod
     def _add_formatted_content(doc: Document, content: str):
-        """Agrega contenido formateado al documento."""
         lines = content.split('\n')
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-
             if line.startswith('## '):
                 heading = doc.add_heading(line[3:], level=1)
                 for run in heading.runs:
@@ -1191,15 +909,14 @@ class WordExporter:
                 for run in heading.runs:
                     run.font.color.rgb = RGBColor(30, 95, 142)
             elif line.startswith('#### '):
-                heading = doc.add_heading(line[5:], level=3)
+                doc.add_heading(line[5:], level=3)
             elif line.startswith('|') and '---' not in line:
                 cells = [c.strip() for c in line.split('|')[1:-1]]
                 if cells:
                     table = doc.add_table(rows=1, cols=len(cells))
                     table.style = 'Light Grid Accent 1'
                     for i, cell_text in enumerate(cells):
-                        clean_text = cell_text.replace('**', '')
-                        table.rows[0].cells[i].text = clean_text
+                        table.rows[0].cells[i].text = cell_text.replace('**', '')
             elif line.startswith('|') and '---' in line:
                 continue
             elif line.startswith('- **'):
@@ -1211,9 +928,9 @@ class WordExporter:
                         run.font.bold = True
                     run.font.size = Pt(11)
             elif line.startswith('- '):
-                p = doc.add_paragraph(line[2:], style='List Bullet')
-            elif line.startswith('1.') or line.startswith('2.') or line.startswith('3.'):
-                p = doc.add_paragraph(line, style='List Number')
+                doc.add_paragraph(line[2:], style='List Bullet')
+            elif re.match(r'^\d+\.', line):
+                doc.add_paragraph(line, style='List Number')
             else:
                 p = doc.add_paragraph()
                 parts = line.split('**')
@@ -1225,49 +942,31 @@ class WordExporter:
 
 
 # ============================================================================
-# SECCIÓN 10: EXPORTACIÓN A PDF
+# SECCIÓN 10: EXPORTACIÓN A PDF (CORREGIDA PARA UNICODE)
 # ============================================================================
 
 class PDFExporter:
-    """Exporta informes a formato PDF profesional."""
-
     @staticmethod
-    def create_pdf(
-        report_content: str,
-        report_number: str,
-        report_type: str,
-        images: list = None,
-        is_english: bool = False
-    ) -> io.BytesIO:
-        """Crea un documento PDF profesional."""
-        pdf = PDFReport(
-            report_number=report_number,
-            report_type=report_type,
-            is_english=is_english
-        )
+    def create_pdf(report_content: str, report_number: str, report_type: str, images: list = None, is_english: bool = False) -> io.BytesIO:
+        pdf = PDFReport(report_number=report_number, report_type=report_type, is_english=is_english)
         pdf.alias_nb_pages()
         pdf.add_page()
 
         PDFExporter._add_cover_page(pdf, report_number, report_type, is_english)
         pdf.add_page()
-
         PDFExporter._add_content(pdf, report_content)
 
         if images and len(images) > 0:
             pdf.add_page()
             pdf.set_font("Helvetica", "B", 16)
             pdf.set_text_color(13, 43, 78)
-            pdf.cell(0, 12, "REGISTRO FOTOGRÁFICO", ln=True, align="C")
+            pdf.cell(0, 12, clean_text_for_pdf("REGISTRO FOTOGRÁFICO"), ln=True, align="C")
             pdf.ln(8)
 
             for img_data in images:
                 pdf.set_font("Helvetica", "B", 11)
                 pdf.set_text_color(30, 95, 142)
-                pdf.cell(
-                    0, 8,
-                    f"Fotografía N° {img_data['numero']}",
-                    ln=True
-                )
+                pdf.cell(0, 8, clean_text_for_pdf(f"Fotografía N° {img_data['numero']}"), ln=True)
 
                 try:
                     temp_path = f"/tmp/cava_img_{img_data['numero']}.png"
@@ -1277,12 +976,12 @@ class PDFExporter:
                     os.remove(temp_path)
                 except Exception:
                     pdf.set_font("Helvetica", "I", 9)
-                    pdf.cell(0, 6, "[Imagen no disponible]", ln=True)
+                    pdf.cell(0, 6, clean_text_for_pdf("[Imagen no disponible]"), ln=True)
 
                 desc = img_data.get("descripcion_mejorada") or img_data.get("descripcion_original", "")
                 pdf.set_font("Helvetica", "I", 9)
                 pdf.set_text_color(108, 117, 125)
-                pdf.multi_cell(0, 5, f"Figura {img_data['numero']}: {desc}")
+                pdf.multi_cell(0, 5, clean_text_for_pdf(f"Figura {img_data['numero']}: {desc}"))
                 pdf.ln(6)
 
         buffer = io.BytesIO()
@@ -1293,40 +992,29 @@ class PDFExporter:
 
     @staticmethod
     def _add_cover_page(pdf, report_number, report_type, is_english):
-        """Agrega la portada del PDF."""
         pdf.ln(50)
         pdf.set_font("Helvetica", "B", 32)
         pdf.set_text_color(13, 43, 78)
-        pdf.cell(0, 15, "🔧 CAVA", ln=True, align="C")
+        pdf.cell(0, 15, clean_text_for_pdf("CAVA"), ln=True, align="C")
 
         pdf.set_font("Helvetica", "", 14)
         pdf.set_text_color(30, 95, 142)
-        pdf.cell(
-            0, 10,
-            "Especialistas en Robotica y Automatizacion",
-            ln=True, align="C"
-        )
-
+        pdf.cell(0, 10, clean_text_for_pdf("Especialistas en Robotica y Automatizacion"), ln=True, align="C")
         pdf.ln(20)
 
         pdf.set_font("Helvetica", "B", 20)
         pdf.set_text_color(13, 43, 78)
-        pdf.cell(0, 12, report_type.upper(), ln=True, align="C")
+        pdf.cell(0, 12, clean_text_for_pdf(report_type.upper()), ln=True, align="C")
 
         pdf.set_font("Helvetica", "B", 16)
         pdf.set_text_color(201, 123, 0)
-        pdf.cell(0, 10, f"N° {report_number}", ln=True, align="C")
+        pdf.cell(0, 10, clean_text_for_pdf(f"N° {report_number}"), ln=True, align="C")
 
         if is_english:
             pdf.ln(5)
             pdf.set_font("Helvetica", "I", 12)
             pdf.set_text_color(183, 28, 28)
-            pdf.cell(
-                0, 8,
-                "[ENGLISH VERSION - TRANSLATED DOCUMENT]",
-                ln=True, align="C"
-            )
-
+            pdf.cell(0, 8, clean_text_for_pdf("[ENGLISH VERSION - TRANSLATED DOCUMENT]"), ln=True, align="C")
         pdf.ln(30)
 
         pdf.set_font("Helvetica", "", 10)
@@ -1338,14 +1026,14 @@ class PDFExporter:
         ]
         for label, value in info_items:
             pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(60, 7, label, ln=False)
+            pdf.cell(60, 7, clean_text_for_pdf(label), ln=False)
             pdf.set_font("Helvetica", "", 10)
-            pdf.cell(0, 7, value, ln=True)
+            pdf.cell(0, 7, clean_text_for_pdf(value), ln=True)
 
     @staticmethod
     def _add_content(pdf, content: str):
-        """Agrega el contenido formateado al PDF."""
-        lines = content.split('\n')
+        clean_content = clean_text_for_pdf(content)
+        lines = clean_content.split('\n')
         for line in lines:
             line = line.strip()
             if not line:
@@ -1378,32 +1066,30 @@ class PDFExporter:
                     pdf.set_text_color(26, 26, 26)
                     col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / max(len(cells), 1)
                     for cell_text in cells:
-                        pdf.cell(col_width, 6, cell_text[:30], border=1)
+                        pdf.cell(col_width, 6, clean_text_for_pdf(cell_text[:30]), border=1)
                     pdf.ln()
             elif line.startswith('|') and '---' in line:
                 continue
             elif line.startswith('- '):
                 pdf.set_font("Helvetica", "", 10)
                 pdf.set_text_color(26, 26, 26)
-                clean = line[2:].replace('**', '')
+                clean_line = clean_text_for_pdf(line[2:].replace('**', ''))
                 pdf.cell(5)
-                pdf.multi_cell(0, 5, f"• {clean}")
+                pdf.multi_cell(0, 5, f"• {clean_line}")
             elif re.match(r'^\d+\.', line):
                 pdf.set_font("Helvetica", "", 10)
                 pdf.set_text_color(26, 26, 26)
-                clean = line.replace('**', '')
+                clean_line = clean_text_for_pdf(line.replace('**', ''))
                 pdf.cell(5)
-                pdf.multi_cell(0, 5, clean)
+                pdf.multi_cell(0, 5, clean_line)
             else:
                 pdf.set_font("Helvetica", "", 10)
                 pdf.set_text_color(26, 26, 26)
-                clean = line.replace('**', '')
-                pdf.multi_cell(0, 5, clean)
+                clean_line = clean_text_for_pdf(line.replace('**', ''))
+                pdf.multi_cell(0, 5, clean_line)
 
 
 class PDFReport(FPDF):
-    """Clase personalizada de PDF con encabezado y pie de página."""
-
     def __init__(self, report_number="", report_type="", is_english=False):
         super().__init__()
         self.report_number = report_number
@@ -1411,98 +1097,54 @@ class PDFReport(FPDF):
         self.is_english = is_english
 
     def header(self):
-        """Encabezado de cada página."""
         if self.page_no() <= 1:
             return
         self.set_font("Helvetica", "I", 8)
         self.set_text_color(108, 117, 125)
-        self.cell(
-            0, 6,
-            "CAVA - Especialistas en Robotica y Automatizacion | "
-            f"{self.report_type} | N° {self.report_number}",
-            ln=True, align="R"
-        )
+        clean_type = clean_text_for_pdf(self.report_type)
+        clean_num = clean_text_for_pdf(self.report_number)
+        self.cell(0, 6, clean_text_for_pdf(f"CAVA - Especialistas en Robotica y Automatizacion | {clean_type} | N° {clean_num}"), ln=True, align="R")
         self.set_draw_color(222, 226, 230)
-        self.line(
-            self.l_margin, self.get_y(),
-            self.w - self.r_margin, self.get_y()
-        )
+        self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
         self.ln(4)
 
     def footer(self):
-        """Pie de página de cada página."""
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
         self.set_text_color(108, 117, 125)
-        self.cell(
-            0, 10,
-            f"Roger Huamani | {self.report_number} | "
-            f"Pagina {self.page_no()}/{{nb}}",
-            align="C"
-        )
+        self.cell(0, 10, clean_text_for_pdf(f"Roger Huamani | {self.report_number} | Pagina {self.page_no()}/{{nb}}"), align="C")
 
 
 # ============================================================================
-# SECCIÓN 11: PANTALLA PRINCIPAL - DASHBOARD
+# SECCIÓN 11: PANTALLAS DE LA APLICACIÓN
 # ============================================================================
 
 def render_dashboard():
-    """Renderiza el panel principal del sistema."""
     user = st.session_state.get("current_user", {})
-
     st.markdown(f"""
     <div class="main-header">
         <h1>📊 Panel de Control - Sistema de Informes</h1>
-        <p>Bienvenido, <strong>{user.get('nombre', 'Usuario')}</strong> |
-        Rol: {user.get('rol', 'N/A')} |
-        Sesión iniciada: {st.session_state.get('login_time', datetime.now()).strftime('%d/%m/%Y %H:%M')}</p>
+        <p>Bienvenido, <strong>{user.get('nombre', 'Usuario')}</strong> | Rol: {user.get('rol', 'N/A')} | Sesión: {st.session_state.get('login_time', datetime.now()).strftime('%d/%m/%Y %H:%M')}</p>
     </div>
     """, unsafe_allow_html=True)
 
     reports = st.session_state.get("local_reports", [])
     total_reports = len(reports)
-    reports_today = sum(
-        1 for r in reports
-        if r.get("fecha_creacion", "")[:10] == datetime.now().strftime("%Y-%m-%d")
-    )
-    reports_month = sum(
-        1 for r in reports
-        if r.get("fecha_creacion", "")[:7] == datetime.now().strftime("%Y-%m")
-    )
+    reports_today = sum(1 for r in reports if r.get("fecha_creacion", "")[:10] == datetime.now().strftime("%Y-%m-%d"))
+    reports_month = sum(1 for r in reports if r.get("fecha_creacion", "")[:7] == datetime.now().strftime("%Y-%m"))
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{total_reports}</div>
-            <div class="stat-label">Total de Informes</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-number'>{total_reports}</div><div class='stat-label'>Total de Informes</div></div>", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{reports_today}</div>
-            <div class="stat-label">Informes Hoy</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-number'>{reports_today}</div><div class='stat-label'>Informes Hoy</div></div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{reports_month}</div>
-            <div class="stat-label">Informes del Mes</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-number'>{reports_month}</div><div class='stat-label'>Informes del Mes</div></div>", unsafe_allow_html=True)
     with col4:
         gemini_status = "✅" if st.session_state.get("gemini_api_key") else "⚠️"
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{gemini_status}</div>
-            <div class="stat-label">Estado Gemini AI</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='stat-card'><div class='stat-number'>{gemini_status}</div><div class='stat-label'>Estado Gemini AI</div></div>", unsafe_allow_html=True)
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("⚡ Accesos Rápidos")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1511,7 +1153,7 @@ def render_dashboard():
             st.session_state.selected_report_type = TIPO_REPORTE_MANTENIMIENTO
             st.rerun()
     with col2:
-        if st.button(" Nuevo Informe Ejecutivo", use_container_width=True, type="primary"):
+        if st.button("📊 Nuevo Informe Ejecutivo", use_container_width=True, type="primary"):
             st.session_state.current_page = "Nuevo Informe"
             st.session_state.selected_report_type = TIPO_INFORME_EJECUTIVO
             st.rerun()
@@ -1521,169 +1163,75 @@ def render_dashboard():
             st.rerun()
 
 
-# ============================================================================
-# SECCIÓN 12: PANTALLA DE CREACIÓN DE INFORMES
-# ============================================================================
-
 def render_new_report():
-    """Renderiza la pantalla de creación de un nuevo informe."""
     user = st.session_state.get("current_user", {})
-
     st.markdown(f"""
     <div class="main-header">
         <h1>📝 Crear Nuevo Informe</h1>
-        <p>Complete los campos requeridos y el sistema generará automáticamente
-        el informe profesional utilizando inteligencia artificial.</p>
+        <p>Complete los campos requeridos y el sistema generará automáticamente el informe profesional utilizando inteligencia artificial.</p>
     </div>
     """, unsafe_allow_html=True)
 
     st.subheader("1️⃣ Tipo de Documento")
-    report_type = st.radio(
-        "Seleccione el tipo de documento a generar:",
-        [TIPO_REPORTE_MANTENIMIENTO, TIPO_INFORME_EJECUTIVO],
-        index=0 if st.session_state.get("selected_report_type") == TIPO_REPORTE_MANTENIMIENTO else 1,
-        horizontal=True,
-        key="report_type_selector"
-    )
+    report_type = st.radio("Seleccione el tipo de documento a generar:", [TIPO_REPORTE_MANTENIMIENTO, TIPO_INFORME_EJECUTIVO],
+                           index=0 if st.session_state.get("selected_report_type") == TIPO_REPORTE_MANTENIMIENTO else 1, horizontal=True, key="report_type_selector")
     st.session_state.selected_report_type = report_type
 
     report_number = ReportNumberGenerator.generate(report_type)
     st.info(f"📋 Número de documento asignado automáticamente: **{report_number}**")
-
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
     st.subheader("2️⃣ Datos Generales del Informe")
-
     col1, col2 = st.columns(2)
     with col1:
-        fecha_informe = st.date_input(
-            "📅 Fecha del Informe *",
-            value=datetime.now(),
-            key="fecha_informe"
-        )
-        turno = st.selectbox(
-            "🕐 Turno *",
-            TURNOS,
-            key="turno_selector"
-        )
-        area = st.selectbox(
-            "🏭 Área / Ubicación *",
-            AREAS_PLANTA,
-            key="area_selector"
-        )
-        disciplina = st.selectbox(
-            "🔧 Disciplina *",
-            DISCIPLINAS,
-            key="disciplina_selector"
-        )
-
+        fecha_informe = st.date_input("📅 Fecha del Informe *", value=datetime.now(), key="fecha_informe")
+        turno = st.selectbox("🕐 Turno *", TURNOS, key="turno_selector")
+        area = st.selectbox("🏭 Área / Ubicación *", AREAS_PLANTA, key="area_selector")
+        disciplina = st.selectbox("🔧 Disciplina *", DISCIPLINAS, key="disciplina_selector")
     with col2:
-        numero_ot = st.text_input(
-            "📄 Número de OT (Orden de Trabajo) *",
-            placeholder="Ej: OT-2026-00123",
-            key="numero_ot_input"
-        )
-        equipo_nombre = st.text_input(
-            "⚙️ Nombre del Equipo *",
-            placeholder="Ej: Bomba Centrífuga B-201",
-            key="equipo_nombre_input"
-        )
-        equipo_tag = st.text_input(
-            "🏷️ Tag / Código del Equipo *",
-            placeholder="Ej: P-201A",
-            key="equipo_tag_input"
-        )
-        prioridad = st.selectbox(
-            "🚨 Prioridad *",
-            PRIORIDADES,
-            key="prioridad_selector"
-        )
+        numero_ot = st.text_input("📄 Número de OT (Orden de Trabajo) *", placeholder="Ej: OT-2026-00123", key="numero_ot_input")
+        equipo_nombre = st.text_input("⚙️ Nombre del Equipo *", placeholder="Ej: Bomba Centrífuga B-201", key="equipo_nombre_input")
+        equipo_tag = st.text_input("🏷️ Tag / Código del Equipo *", placeholder="Ej: P-201A", key="equipo_tag_input")
+        prioridad = st.selectbox("🚨 Prioridad *", PRIORIDADES, key="prioridad_selector")
 
     col3, col4 = st.columns(2)
     with col3:
-        tipo_intervencion = st.selectbox(
-            "🔨 Tipo de Intervención *",
-            TIPOS_INTERVENCION,
-            key="tipo_intervencion_selector"
-        )
-        tecnicos = st.text_input(
-            "👷 Técnico(s) Responsable(s) *",
-            placeholder="Ej: Juan Pérez, María López",
-            key="tecnicos_input"
-        )
-
+        tipo_intervencion = st.selectbox("🔨 Tipo de Intervención *", TIPOS_INTERVENCION, key="tipo_intervencion_selector")
+        tecnicos = st.text_input("👷 Técnico(s) Responsable(s) *", placeholder="Ej: Juan Pérez, María López", key="tecnicos_input")
     with col4:
-        hora_aviso = st.time_input(
-            " Hora de Aviso",
-            value=datetime.now().time(),
-            key="hora_aviso_input"
-        )
-        elaborado_por = st.text_input(
-            "✍️ Elaborado por",
-            value=user.get("nombre", ""),
-            key="elaborado_por_input"
-        )
+        hora_aviso = st.time_input("⏰ Hora de Aviso", value=datetime.now().time(), key="hora_aviso_input")
+        elaborado_por = st.text_input("✍️ Elaborado por", value=user.get("nombre", ""), key="elaborado_por_input")
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("3️⃣ Descripción de la Intervención (Campo Principal)")
-
     st.markdown(f"""
     <div class="custom-alert">
-        💡 <strong>Instrucciones para el técnico:</strong> Describa con sus propias
-        palabras todo el contexto del problema identificado, las acciones que ha
-        realizado y sus conclusiones. No se preocupe por la redacción técnica,
-        la inteligencia artificial se encargará de estructurar, corregir y
-        profesionalizar el contenido.
+        💡 <strong>Instrucciones para el técnico:</strong> Describa con sus propias palabras todo el contexto del problema identificado, 
+        las acciones que ha realizado y sus conclusiones. No se preocupe por la redacción técnica, la inteligencia artificial se encargará 
+        de estructurar, corregir y profesionalizar el contenido, incluyendo cálculos de ingeniería si son relevantes.
     </div>
     """, unsafe_allow_html=True)
 
-    raw_description = st.text_area(
-        "Describa detalladamente la intervención realizada *:",
-        height=250,
-        placeholder=(
-            "Ejemplo: Al llegar a la planta encontré la bomba B-201 con una "
-            "fuga de aceite en el sello mecánico. El operador me dijo que "
-            "empezó a vibrar mucho desde las 6am. Revisé el acople y estaba "
-            "desalineado. Cambié el sello mecánico, realicé la alineación "
-            "láser y la bomba quedó funcionando normal. El rodamiento del "
-            "lado del acople también estaba con juego, lo cambié también..."
-        ),
-        key="raw_description_input"
-    )
+    raw_description = st.text_area("Describa detalladamente la intervención realizada *:", height=250,
+        placeholder="Ejemplo: Al llegar a la planta encontré la bomba B-201 con una fuga de aceite en el sello mecánico. El operador me dijo que empezó a vibrar mucho desde las 6am. Revisé el acople y estaba desalineado. Cambié el sello mecánico, realicé la alineación láser (tolerancia < 0.05mm) y la bomba quedó funcionando normal. El rodamiento del lado del acople también estaba con juego, lo cambié también...",
+        key="raw_description_input")
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("4️⃣ Registro Fotográfico")
-
     ImageManager.initialize_image_counter()
-
-    uploaded_files = st.file_uploader(
-        "📷 Cargar imágenes de la intervención",
-        type=["png", "jpg", "jpeg", "webp"],
-        accept_multiple_files=True,
-        key="image_uploader"
-    )
+    uploaded_files = st.file_uploader("📷 Cargar imágenes de la intervención", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=True, key="image_uploader")
 
     if uploaded_files:
         for file in uploaded_files:
-            existing_names = [
-                img["nombre_archivo"]
-                for img in st.session_state.get("uploaded_images", [])
-            ]
+            existing_names = [img["nombre_archivo"] for img in st.session_state.get("uploaded_images", [])]
             if file.name not in existing_names:
-                img_desc = st.text_input(
-                    f" Descripción obligatoria para: **{file.name}** *",
-                    placeholder="Describa qué se observa en la imagen...",
-                    key=f"img_desc_{file.name}"
-                )
+                img_desc = st.text_input(f"📝 Descripción obligatoria para: **{file.name}** *", placeholder="Describa qué se observa en la imagen...", key=f"img_desc_{file.name}")
                 if img_desc:
                     img_data = ImageManager.add_image(file, img_desc)
                     gemini = GeminiAIManager()
                     if gemini.is_configured():
                         with st.spinner("Mejorando descripción con IA..."):
-                            improved = gemini.process_image_description(img_desc)
-                            img_data["descripcion_mejorada"] = improved
+                            img_data["descripcion_mejorada"] = gemini.process_image_description(img_desc)
                     else:
                         img_data["descripcion_mejorada"] = img_desc.strip().capitalize() + "."
                     st.success(f"✅ Imagen '{file.name}' registrada como Foto N° {img_data['numero']}")
@@ -1695,160 +1243,89 @@ def render_new_report():
         for i, img_data in enumerate(images):
             with cols[i % 4]:
                 st.image(img_data["bytes"], width=150)
-                st.caption(
-                    f"Foto N°{img_data['numero']}: "
-                    f"{img_data.get('descripcion_mejorada', '')[:50]}..."
-                )
+                st.caption(f"Foto N°{img_data['numero']}: {img_data.get('descripcion_mejorada', '')[:50]}...")
                 if st.button(f"🗑️", key=f"del_img_{i}"):
                     ImageManager.remove_image(i)
                     st.rerun()
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("5️⃣ Generar Informe")
-
     col1, col2 = st.columns(2)
     with col1:
-        generate_btn = st.button(
-            "🤖 Generar Informe con IA",
-            use_container_width=True,
-            type="primary",
-            key="generate_report_btn"
-        )
+        generate_btn = st.button("🤖 Generar Informe con IA", use_container_width=True, type="primary", key="generate_report_btn")
     with col2:
-        generate_basic_btn = st.button(
-            "📄 Generar Informe Básico (sin IA)",
-            use_container_width=True,
-            key="generate_basic_btn"
-        )
+        generate_basic_btn = st.button("📄 Generar Informe Básico (sin IA)", use_container_width=True, key="generate_basic_btn")
 
     if generate_btn or generate_basic_btn:
         errors = []
-        if not raw_description.strip():
-            errors.append("La descripción de la intervención es obligatoria.")
-        if not numero_ot.strip():
-            errors.append("El número de OT es obligatorio.")
-        if not equipo_nombre.strip():
-            errors.append("El nombre del equipo es obligatorio.")
-        if not equipo_tag.strip():
-            errors.append("El Tag del equipo es obligatorio.")
-        if not tecnicos.strip():
-            errors.append("Los técnicos responsables son obligatorios.")
+        if not raw_description.strip(): errors.append("La descripción de la intervención es obligatoria.")
+        if not numero_ot.strip(): errors.append("El número de OT es obligatorio.")
+        if not equipo_nombre.strip(): errors.append("El nombre del equipo es obligatorio.")
+        if not equipo_tag.strip(): errors.append("El Tag del equipo es obligatorio.")
+        if not tecnicos.strip(): errors.append("Los técnicos responsables son obligatorios.")
 
         if errors:
             for err in errors:
-                st.error(f"️ {err}")
+                st.error(f"⚠️ {err}")
             return
 
         additional_context = {
-            "Fecha": fecha_informe.strftime("%d/%m/%Y"),
-            "Turno": turno,
-            "Número de OT": numero_ot,
-            "Área": area,
-            "Disciplina": disciplina,
-            "Equipo": equipo_nombre,
-            "Tag": equipo_tag,
-            "Prioridad": prioridad,
-            "Tipo de Intervención": tipo_intervencion,
-            "Técnicos": tecnicos,
-            "Hora de Aviso": hora_aviso.strftime("%H:%M"),
-            "Elaborado por": elaborado_por
+            "Fecha": fecha_informe.strftime("%d/%m/%Y"), "Turno": turno, "Número de OT": numero_ot,
+            "Área": area, "Disciplina": disciplina, "Equipo": equipo_nombre, "Tag": equipo_tag,
+            "Prioridad": prioridad, "Tipo de Intervención": tipo_intervencion, "Técnicos": tecnicos,
+            "Hora de Aviso": hora_aviso.strftime("%H:%M"), "Elaborado por": elaborado_por
         }
 
         with st.spinner("🤖 Generando informe profesional con IA... Esto puede tomar unos segundos."):
+            gemini = GeminiAIManager()
             if generate_btn:
-                gemini = GeminiAIManager()
-                report_content = gemini.generate_report_content(
-                    raw_description,
-                    report_type,
-                    additional_context
-                )
+                report_content = gemini.generate_report_content(raw_description, report_type, additional_context)
             else:
-                gemini = GeminiAIManager()
-                report_content = gemini._generate_fallback_report(
-                    raw_description,
-                    report_type,
-                    additional_context
-                )
+                report_content = gemini._generate_fallback_report(raw_description, report_type, additional_context)
 
         st.session_state.generated_report = report_content
         st.session_state.generated_report_number = report_number
         st.session_state.generated_report_type = report_type
         st.session_state.generated_report_context = additional_context
-
         st.success("✅ ¡Informe generado exitosamente!")
         st.rerun()
 
     if "generated_report" in st.session_state and st.session_state.generated_report:
         st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-        st.subheader(" Vista Previa del Informe Generado")
-
+        st.subheader("📋 Vista Previa del Informe Generado")
         st.markdown(st.session_state.generated_report)
-
         st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
         st.subheader("💾 Exportar y Guardar")
 
         col1, col2, col3, col4 = st.columns(4)
-
         with col1:
             try:
-                word_buffer = WordExporter.create_document(
-                    st.session_state.generated_report,
-                    st.session_state.generated_report_number,
-                    st.session_state.generated_report_type,
-                    ImageManager.get_all_images()
-                )
-                st.download_button(
-                    label="📥 Descargar Word (.docx)",
-                    data=word_buffer,
-                    file_name=f"{st.session_state.generated_report_number}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True
-                )
+                word_buffer = WordExporter.create_document(st.session_state.generated_report, st.session_state.generated_report_number, st.session_state.generated_report_type, ImageManager.get_all_images())
+                st.download_button(label="📥 Descargar Word (.docx)", data=word_buffer, file_name=f"{st.session_state.generated_report_number}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
             except Exception as e:
                 st.error(f"Error al generar Word: {e}")
-
         with col2:
             try:
-                pdf_buffer = PDFExporter.create_pdf(
-                    st.session_state.generated_report,
-                    st.session_state.generated_report_number,
-                    st.session_state.generated_report_type,
-                    ImageManager.get_all_images()
-                )
-                st.download_button(
-                    label=" Descargar PDF",
-                    data=pdf_buffer,
-                    file_name=f"{st.session_state.generated_report_number}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                pdf_buffer = PDFExporter.create_pdf(st.session_state.generated_report, st.session_state.generated_report_number, st.session_state.generated_report_type, ImageManager.get_all_images())
+                st.download_button(label="📥 Descargar PDF", data=pdf_buffer, file_name=f"{st.session_state.generated_report_number}.pdf", mime="application/pdf", use_container_width=True)
             except Exception as e:
                 st.error(f"Error al generar PDF: {e}")
-
         with col3:
             if st.button("🌐 Traducir al Inglés", use_container_width=True):
-                with st.spinner(" Traduciendo informe al inglés..."):
+                with st.spinner("🌐 Traduciendo informe al inglés..."):
                     gemini = GeminiAIManager()
-                    translated = gemini.translate_report(
-                        st.session_state.generated_report
-                    )
-                    st.session_state.translated_report = translated
+                    st.session_state.translated_report = gemini.translate_report(st.session_state.generated_report)
                     st.success("✅ Traducción completada!")
                     st.rerun()
-
         with col4:
             if st.button("💾 Guardar en Base de Datos", use_container_width=True, type="primary"):
                 report_data = {
-                    "id": st.session_state.generated_report_number,
-                    "tipo": st.session_state.generated_report_type,
-                    "numero": st.session_state.generated_report_number,
-                    "contenido": st.session_state.generated_report,
+                    "id": st.session_state.generated_report_number, "tipo": st.session_state.generated_report_type,
+                    "numero": st.session_state.generated_report_number, "contenido": st.session_state.generated_report,
                     "contexto": json.dumps(st.session_state.generated_report_context),
                     "fecha_creacion": datetime.now().isoformat(),
                     "autor": st.session_state.get("current_user", {}).get("nombre", ""),
-                    "estado": "Completado",
-                    "imagenes_count": len(ImageManager.get_all_images())
+                    "estado": "Completado", "imagenes_count": len(ImageManager.get_all_images())
                 }
                 sb = SupabaseManager()
                 if sb.save_report(report_data):
@@ -1859,55 +1336,23 @@ def render_new_report():
         if "translated_report" in st.session_state and st.session_state.translated_report:
             st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
             st.subheader("🌐 Versión en Inglés (Mirror Document)")
-
             st.markdown(st.session_state.translated_report)
-
             tcol1, tcol2 = st.columns(2)
             with tcol1:
                 try:
-                    word_en = WordExporter.create_document(
-                        st.session_state.translated_report,
-                        st.session_state.generated_report_number + "-EN",
-                        st.session_state.generated_report_type + " (English)",
-                        ImageManager.get_all_images(),
-                        is_english=True
-                    )
-                    st.download_button(
-                        label="📥 Descargar Word en Inglés",
-                        data=word_en,
-                        file_name=f"{st.session_state.generated_report_number}_EN.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        use_container_width=True
-                    )
+                    word_en = WordExporter.create_document(st.session_state.translated_report, st.session_state.generated_report_number + "-EN", st.session_state.generated_report_type + " (English)", ImageManager.get_all_images(), is_english=True)
+                    st.download_button(label="📥 Descargar Word en Inglés", data=word_en, file_name=f"{st.session_state.generated_report_number}_EN.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
                 except Exception as e:
                     st.error(f"Error: {e}")
-
             with tcol2:
                 try:
-                    pdf_en = PDFExporter.create_pdf(
-                        st.session_state.translated_report,
-                        st.session_state.generated_report_number + "-EN",
-                        st.session_state.generated_report_type + " (English)",
-                        ImageManager.get_all_images(),
-                        is_english=True
-                    )
-                    st.download_button(
-                        label="📥 Descargar PDF en Inglés",
-                        data=pdf_en,
-                        file_name=f"{st.session_state.generated_report_number}_EN.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
+                    pdf_en = PDFExporter.create_pdf(st.session_state.translated_report, st.session_state.generated_report_number + "-EN", st.session_state.generated_report_type + " (English)", ImageManager.get_all_images(), is_english=True)
+                    st.download_button(label="📥 Descargar PDF en Inglés", data=pdf_en, file_name=f"{st.session_state.generated_report_number}_EN.pdf", mime="application/pdf", use_container_width=True)
                 except Exception as e:
                     st.error(f"Error: {e}")
 
 
-# ============================================================================
-# SECCIÓN 13: PANTALLA DE INFORMES GUARDADOS
-# ============================================================================
-
 def render_saved_reports():
-    """Renderiza la pantalla de informes guardados."""
     st.markdown(f"""
     <div class="main-header">
         <h1>📂 Informes Guardados</h1>
@@ -1919,35 +1364,21 @@ def render_saved_reports():
     reports = sb.get_reports()
 
     if not reports:
-        st.info(" No hay informes guardados aún. Cree su primer informe desde el menú principal.")
+        st.info("📭 No hay informes guardados aún. Cree su primer informe desde el menú principal.")
         return
 
     st.markdown(f"**Total de informes almacenados:** {len(reports)}")
-
     for i, report in enumerate(reports):
-        with st.expander(
-            f"📄 {report.get('numero', 'N/A')} - "
-            f"{report.get('tipo', 'N/A')} | "
-            f"{report.get('fecha_creacion', '')[:10]} | "
-            f"{report.get('estado', 'Pendiente')}",
-            expanded=False
-        ):
+        with st.expander(f"📄 {report.get('numero', 'N/A')} - {report.get('tipo', 'N/A')} | {report.get('fecha_creacion', '')[:10]} | {report.get('estado', 'Pendiente')}", expanded=False):
             col1, col2, col3 = st.columns([3, 1, 1])
-
             with col1:
-                st.markdown(f"**Tipo:** {report.get('tipo', 'N/A')}")
-                st.markdown(f"**Autor:** {report.get('autor', 'N/A')}")
-                st.markdown(f"**Fecha:** {report.get('fecha_creacion', 'N/A')[:16]}")
-                st.markdown(f"**Estado:** {report.get('estado', 'N/A')}")
-                st.markdown(f"**Imágenes:** {report.get('imagenes_count', 0)}")
-
+                st.markdown(f"**Tipo:** {report.get('tipo', 'N/A')}<br>**Autor:** {report.get('autor', 'N/A')}<br>**Fecha:** {report.get('fecha_creacion', 'N/A')[:16]}<br>**Estado:** {report.get('estado', 'N/A')}<br>**Imágenes:** {report.get('imagenes_count', 0)}", unsafe_allow_html=True)
             with col2:
                 if st.button("👁️ Ver", key=f"view_{i}"):
                     st.session_state.viewing_report = report
                     st.rerun()
-
             with col3:
-                if st.button("️ Eliminar", key=f"del_{i}"):
+                if st.button("🗑️ Eliminar", key=f"del_{i}"):
                     sb.delete_report(report.get("id", ""))
                     st.success("Informe eliminado.")
                     st.rerun()
@@ -1955,51 +1386,25 @@ def render_saved_reports():
             if st.session_state.get("viewing_report", {}).get("id") == report.get("id"):
                 st.markdown("---")
                 st.markdown(report.get("contenido", ""))
-
                 ecol1, ecol2 = st.columns(2)
                 with ecol1:
                     try:
-                        wb = WordExporter.create_document(
-                            report.get("contenido", ""),
-                            report.get("numero", ""),
-                            report.get("tipo", "")
-                        )
-                        st.download_button(
-                            "📥 Word",
-                            data=wb,
-                            file_name=f"{report.get('numero', 'reporte')}.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key=f"dl_word_{i}"
-                        )
+                        wb = WordExporter.create_document(report.get("contenido", ""), report.get("numero", ""), report.get("tipo", ""))
+                        st.download_button("📥 Word", data=wb, file_name=f"{report.get('numero', 'reporte')}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"dl_word_{i}")
                     except Exception:
                         pass
                 with ecol2:
                     try:
-                        pb = PDFExporter.create_pdf(
-                            report.get("contenido", ""),
-                            report.get("numero", ""),
-                            report.get("tipo", "")
-                        )
-                        st.download_button(
-                            " PDF",
-                            data=pb,
-                            file_name=f"{report.get('numero', 'reporte')}.pdf",
-                            mime="application/pdf",
-                            key=f"dl_pdf_{i}"
-                        )
+                        pb = PDFExporter.create_pdf(report.get("contenido", ""), report.get("numero", ""), report.get("tipo", ""))
+                        st.download_button("📥 PDF", data=pb, file_name=f"{report.get('numero', 'reporte')}.pdf", mime="application/pdf", key=f"dl_pdf_{i}")
                     except Exception:
                         pass
 
 
-# ============================================================================
-# SECCIÓN 14: PANTALLA DE CONFIGURACIÓN
-# ============================================================================
-
 def render_settings():
-    """Renderiza la pantalla de configuración del sistema."""
     st.markdown(f"""
     <div class="main-header">
-        <h1>️ Configuración del Sistema</h1>
+        <h1>⚙️ Configuración del Sistema</h1>
         <p>Configure las APIs, conexión a base de datos y preferencias del sistema.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -2007,25 +1412,15 @@ def render_settings():
     st.subheader("🤖 Configuración de Gemini AI")
     st.markdown(f"""
     <div class="custom-alert">
-        🔑 Ingrese su API Key de Google Gemini para habilitar la generación
-        inteligente de informes. Obtenga su clave en
-        <a href="https://aistudio.google.com/app/apikey" target="_blank">
-        Google AI Studio</a>.
+        🔑 Ingrese su API Key de Google Gemini para habilitar la generación inteligente de informes. 
+        Obtenga su clave gratuita en <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.
     </div>
     """, unsafe_allow_html=True)
 
-    gemini_key = st.text_input(
-        "API Key de Gemini",
-        type="password",
-        value=st.session_state.get("gemini_api_key", ""),
-        placeholder="AIzaSy...",
-        key="gemini_key_input"
-    )
-
+    gemini_key = st.text_input("API Key de Gemini", type="password", value=st.session_state.get("gemini_api_key", ""), placeholder="AIzaSy...", key="gemini_key_input")
     if st.button("💾 Guardar API Key de Gemini", key="save_gemini"):
         if gemini_key.strip():
             st.session_state.gemini_api_key = gemini_key.strip()
-            # Guardar en archivo persistente
             config = ConfigPersistence.load_config()
             config["gemini_api_key"] = gemini_key.strip()
             ConfigPersistence.save_config(config)
@@ -2036,43 +1431,29 @@ def render_settings():
 
     gemini = GeminiAIManager()
     if gemini.is_configured():
-        st.success("✅ Gemini AI está configurado y operativo.")
+        st.success("✅ Gemini AI está configurado y operativo (Modelo: gemini-1.5-flash).")
     else:
         st.warning("⚠️ Gemini AI no está configurado. Los informes se generarán con plantilla base.")
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("🗄️ Configuración de Supabase")
     st.markdown(f"""
     <div class="custom-alert">
         🗄️ Configure la conexión a Supabase para almacenar sus informes en la nube.
-        Cree un proyecto en <a href="https://supabase.com" target="_blank">supabase.com</a>
-        y obtenga la URL y la API Key.
+        Cree un proyecto en <a href="https://supabase.com" target="_blank">supabase.com</a> y obtenga la URL y la API Key.
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
-        supabase_url = st.text_input(
-            "Supabase URL",
-            value=st.session_state.get("supabase_url", ""),
-            placeholder="https://xxxxx.supabase.co",
-            key="supabase_url_input"
-        )
+        supabase_url = st.text_input("Supabase URL", value=st.session_state.get("supabase_url", ""), placeholder="https://xxxxx.supabase.co", key="supabase_url_input")
     with col2:
-        supabase_key = st.text_input(
-            "Supabase API Key (anon)",
-            type="password",
-            value=st.session_state.get("supabase_key", ""),
-            placeholder="eyJhbGciOi...",
-            key="supabase_key_input"
-        )
+        supabase_key = st.text_input("Supabase API Key (anon)", type="password", value=st.session_state.get("supabase_key", ""), placeholder="eyJhbGciOi...", key="supabase_key_input")
 
     if st.button("💾 Guardar Configuración Supabase", key="save_supabase"):
         if supabase_url.strip() and supabase_key.strip():
             st.session_state.supabase_url = supabase_url.strip()
             st.session_state.supabase_key = supabase_key.strip()
-            # Guardar en archivo persistente
             config = ConfigPersistence.load_config()
             config["supabase_url"] = supabase_url.strip()
             config["supabase_key"] = supabase_key.strip()
@@ -2088,49 +1469,23 @@ def render_settings():
     else:
         st.info("ℹ️ Supabase no configurado. Los informes se guardarán localmente en la sesión.")
 
-    st.markdown(f"""
-    <div class="custom-alert">
-        📌 <strong>Nota sobre la tabla en Supabase:</strong> Asegúrese de crear
-        la tabla <code>informes_mantenimiento</code> con las columnas:
-        id (text, PK), tipo (text), numero (text), contenido (text),
-        contexto (text), fecha_creacion (timestamp), autor (text),
-        estado (text), imagenes_count (int).
-    </div>
-    """, unsafe_allow_html=True)
-
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
     st.subheader("👥 Gestión de Usuarios")
-
     auth = AuthenticationManager()
     users = auth.get_all_users()
-
-    user_data = []
-    for uname, udata in users.items():
-        user_data.append({
-            "Usuario": uname,
-            "Nombre": udata.get("nombre", ""),
-            "Rol": udata.get("rol", ""),
-            "Activo": "✅ Sí" if udata.get("activo") else "❌ No"
-        })
-
+    user_data = [{"Usuario": uname, "Nombre": udata.get("nombre", ""), "Rol": udata.get("rol", ""), "Activo": "✅ Sí" if udata.get("activo") else "❌ No"} for uname, udata in users.items()]
     if user_data:
         st.dataframe(user_data, use_container_width=True, hide_index=True)
 
     st.markdown("---")
     st.markdown("**Registrar nuevo usuario:**")
-
     rcol1, rcol2 = st.columns(2)
     with rcol1:
         new_username = st.text_input("Nuevo Usuario", key="new_user_name")
         new_nombre = st.text_input("Nombre Completo", key="new_user_fullname")
     with rcol2:
         new_password = st.text_input("Contraseña", type="password", key="new_user_pass")
-        new_rol = st.selectbox(
-            "Rol",
-            ["Superintendente", "Jefe de Mantenimiento", "Planificador", "Técnico", "Supervisor"],
-            key="new_user_rol"
-        )
+        new_rol = st.selectbox("Rol", ["Superintendente", "Jefe de Mantenimiento", "Planificador", "Técnico", "Supervisor"], key="new_user_rol")
 
     if st.button("➕ Registrar Usuario", key="register_user_btn"):
         if new_username and new_password and new_nombre:
@@ -2138,17 +1493,12 @@ def render_settings():
                 st.success(f"✅ Usuario '{new_username}' registrado exitosamente.")
                 st.rerun()
             else:
-                st.error(" El usuario ya existe.")
+                st.error("❌ El usuario ya existe.")
         else:
             st.warning("⚠️ Complete todos los campos.")
 
 
-# ============================================================================
-# SECCIÓN 15: PANTALLA DE AYUDA
-# ============================================================================
-
 def render_help():
-    """Renderiza la pantalla de ayuda y documentación."""
     st.markdown(f"""
     <div class="main-header">
         <h1>❓ Ayuda y Documentación</h1>
@@ -2156,194 +1506,73 @@ def render_help():
     </div>
     """, unsafe_allow_html=True)
 
-    st.subheader(" ¿Cómo funciona el sistema?")
+    st.subheader("📖 ¿Cómo funciona el sistema?")
     st.markdown("""
-    Este sistema está diseñado para facilitar la generación de informes técnicos
-    y ejecutivos de mantenimiento. El flujo de trabajo es el siguiente:
-
-    1. **El técnico describe** con sus propias palabras lo que hizo durante la
-       intervención (problema, acciones, conclusiones).
-    2. **La IA de Gemini** procesa esa descripción y genera un informe profesional
-       con estructura, redacción técnica y sin errores ortográficos.
-    3. **El sistema completa** automáticamente todos los campos requeridos según
-       el tipo de documento seleccionado.
+    Este sistema está diseñado para facilitar la generación de informes técnicos y ejecutivos de mantenimiento. El flujo de trabajo es el siguiente:
+    1. **El técnico describe** con sus propias palabras lo que hizo durante la intervención (problema, acciones, conclusiones).
+    2. **La IA de Gemini** procesa esa descripción y genera un informe profesional con estructura, redacción técnica, cálculos de ingeniería (si aplica) y sin errores ortográficos.
+    3. **El sistema completa** automáticamente todos los campos requeridos según el tipo de documento seleccionado.
     4. **Usted revisa, exporta** (PDF/Word) y almacena el informe.
     """)
 
     st.subheader("📝 Tipos de Documentos")
-
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("""
-        **📋 Reporte de Mantenimiento**
-        - Uso: Intervenciones del día a día
-        - Audiencia: Equipo de mantenimiento
-        - Contenido: Detalle técnico completo
-        - Campos: OT, equipo, problema, trabajo,
-          repuestos, tiempos, estado final
-        """)
+        st.markdown("**📋 Reporte de Mantenimiento**\n- Uso: Intervenciones del día a día\n- Audiencia: Equipo de mantenimiento\n- Contenido: Detalle técnico completo, cálculos, repuestos, tiempos.")
     with col2:
-        st.markdown("""
-        **📊 Informe Ejecutivo de Mantenimiento**
-        - Uso: Eventos críticos y gerencia
-        - Audiencia: Gerencia de planta
-        - Contenido: Impacto, costos, decisiones
-        - Campos: Resumen, impacto operativo,
-          causa raíz, costos, recomendaciones
-        """)
-
-    st.subheader("🔧 Requisitos Técnicos")
-    st.markdown("""
-    - **API de Gemini:** Necesaria para generación inteligente de informes.
-      Obtenga su clave en [Google AI Studio](https://aistudio.google.com/app/apikey).
-    - **Supabase (Opcional):** Para almacenamiento en la nube de los informes.
-      Cree una cuenta en [supabase.com](https://supabase.com).
-    - **Navegador:** Chrome, Firefox o Edge actualizados.
-    """)
+        st.markdown("**📊 Informe Ejecutivo de Mantenimiento**\n- Uso: Eventos críticos y gerencia\n- Audiencia: Gerencia de planta\n- Contenido: Impacto, costos, causa raíz, recomendaciones.")
 
     st.subheader("❓ Preguntas Frecuentes")
-
     with st.expander("¿Puedo usar el sistema sin la API de Gemini?"):
-        st.markdown(
-            "Sí, el sistema generará informes con una plantilla base. "
-            "Sin embargo, la calidad y profundidad del contenido será limitada. "
-            "Se recomienda configurar la API para obtener resultados profesionales."
-        )
-
+        st.markdown("Sí, el sistema generará informes con una plantilla base. Sin embargo, la calidad y profundidad del contenido será limitada. Se recomienda configurar la API gratuita para obtener resultados profesionales.")
     with st.expander("¿Cómo obtengo mi API Key de Gemini?"):
-        st.markdown(
-            "1. Vaya a [Google AI Studio](https://aistudio.google.com/app/apikey)\n"
-            "2. Inicie sesión con su cuenta de Google\n"
-            "3. Haga clic en 'Create API Key'\n"
-            "4. Copie la clave y péguela en la sección de Configuración"
-        )
-
+        st.markdown("1. Vaya a [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Inicie sesión con su cuenta de Google\n3. Haga clic en 'Create API Key'\n4. Copie la clave y péguela en la sección de Configuración")
     with st.expander("¿Los datos se almacenan de forma segura?"):
-        st.markdown(
-            "Los datos se almacenan en Supabase (si está configurado) con "
-            "encriptación de nivel empresarial. Sin Supabase, los datos "
-            "solo existen durante la sesión activa del navegador."
-        )
+        st.markdown("Los datos se almacenan en Supabase (si está configurado) con encriptación de nivel empresarial. Sin Supabase, los datos se guardan localmente en archivos JSON seguros dentro del entorno de la aplicación.")
 
-    with st.expander("¿Puedo traducir los informes al inglés?"):
-        st.markdown(
-            "Sí, después de generar un informe puede hacer clic en "
-            "'Traducir al Inglés' para crear un documento espejo en inglés. "
-            "Ambos documentos se pueden descargar en PDF y Word."
-        )
-
-
-# ============================================================================
-# SECCIÓN 16: SIDEBAR Y NAVEGACIÓN
-# ============================================================================
 
 def render_sidebar():
-    """Renderiza la barra lateral de navegación."""
     user = st.session_state.get("current_user", {})
-
     with st.sidebar:
         st.markdown(f"""
-        <div style="text-align:center; padding: 20px 10px;
-                    border-bottom: 2px solid {COLOR_PRIMARY};
-                    margin-bottom: 15px;">
+        <div style="text-align:center; padding: 20px 10px; border-bottom: 2px solid {COLOR_PRIMARY}; margin-bottom: 15px;">
             <h2 style="color: {COLOR_PRIMARY}; margin-bottom:2px; font-size:26px;">🔧 CAVA</h2>
-            <p style="color: {COLOR_TEXT_SECONDARY}; font-size:11px; margin:0; font-weight:500;">
-                Especialistas en Robótica<br>y Automatización
-            </p>
-            <p style="color: {COLOR_TEXT_LIGHT}; font-size:10px; margin-top:5px;">
-                v{APP_VERSION}
-            </p>
+            <p style="color: {COLOR_TEXT_SECONDARY}; font-size:11px; margin:0; font-weight:500;">Especialistas en Robótica<br>y Automatización</p>
+            <p style="color: {COLOR_TEXT_LIGHT}; font-size:10px; margin-top:5px;">v{APP_VERSION}</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style="padding: 12px; background: {COLOR_WHITE};
-                    border-radius: 8px; margin-bottom: 15px;
-                    border-left: 4px solid {COLOR_PRIMARY};
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <p style="color: {COLOR_TEXT_DARK}; margin:0; font-size:13px; font-weight:600;">
-                👤 {user.get('nombre', 'Usuario')}
-            </p>
-            <p style="color: {COLOR_TEXT_SECONDARY}; margin:2px 0 0 0; font-size:11px;">
-                {user.get('rol', 'N/A')}
-            </p>
+        <div style="padding: 12px; background: {COLOR_WHITE}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid {COLOR_PRIMARY}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <p style="color: {COLOR_TEXT_DARK}; margin:0; font-size:13px; font-weight:600;">👤 {user.get('nombre', 'Usuario')}</p>
+            <p style="color: {COLOR_TEXT_SECONDARY}; margin:2px 0 0 0; font-size:11px;">{user.get('rol', 'N/A')}</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("### 📌 Navegación")
-
-        page = st.radio(
-            "Ir a:",
-            [
-                "📊 Dashboard",
-                "📝 Nuevo Informe",
-                " Informes Guardados",
-                "️ Configuración",
-                "❓ Ayuda"
-            ],
-            key="sidebar_nav",
-            label_visibility="collapsed"
-        )
-
-        page_map = {
-            "📊 Dashboard": "Dashboard",
-            "📝 Nuevo Informe": "Nuevo Informe",
-            "📂 Informes Guardados": "Informes Guardados",
-            "️ Configuración": "Configuración",
-            "❓ Ayuda": "Ayuda"
-        }
+        page = st.radio("Ir a:", ["📊 Dashboard", "📝 Nuevo Informe", "📂 Informes Guardados", "⚙️ Configuración", "❓ Ayuda"], key="sidebar_nav", label_visibility="collapsed")
+        page_map = {"📊 Dashboard": "Dashboard", "📝 Nuevo Informe": "Nuevo Informe", "📂 Informes Guardados": "Informes Guardados", "⚙️ Configuración": "Configuración", "❓ Ayuda": "Ayuda"}
         st.session_state.current_page = page_map.get(page, "Dashboard")
-
         st.markdown("---")
 
         st.markdown("### 🔌 Estado de Servicios")
-
         gemini = GeminiAIManager()
         if gemini.is_configured():
-            st.markdown(f"""
-            <div style="padding: 8px 12px; background: {COLOR_SUCCESS_BG};
-                        border-radius: 6px; margin-bottom: 8px;
-                        border-left: 3px solid {COLOR_SUCCESS};">
-                <p style="color: {COLOR_SUCCESS}; margin:0; font-size:12px; font-weight:600;">
-                    🤖 Gemini AI: Activo
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="padding: 8px 12px; background: {COLOR_SUCCESS_BG}; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {COLOR_SUCCESS};">
+                <p style="color: {COLOR_SUCCESS}; margin:0; font-size:12px; font-weight:600;">🤖 Gemini AI: Activo (Gratis)</p></div>""", unsafe_allow_html=True)
         else:
-            st.markdown(f"""
-            <div style="padding: 8px 12px; background: {COLOR_WARNING_BG};
-                        border-radius: 6px; margin-bottom: 8px;
-                        border-left: 3px solid {COLOR_WARNING};">
-                <p style="color: {COLOR_WARNING}; margin:0; font-size:12px; font-weight:600;">
-                    🤖 Gemini AI: No configurado
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="padding: 8px 12px; background: {COLOR_WARNING_BG}; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {COLOR_WARNING};">
+                <p style="color: {COLOR_WARNING}; margin:0; font-size:12px; font-weight:600;">🤖 Gemini AI: No configurado</p></div>""", unsafe_allow_html=True)
 
         sb = SupabaseManager()
         if sb.is_connected():
-            st.markdown(f"""
-            <div style="padding: 8px 12px; background: {COLOR_SUCCESS_BG};
-                        border-radius: 6px; margin-bottom: 8px;
-                        border-left: 3px solid {COLOR_SUCCESS};">
-                <p style="color: {COLOR_SUCCESS}; margin:0; font-size:12px; font-weight:600;">
-                    🗄️ Supabase: Conectado
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="padding: 8px 12px; background: {COLOR_SUCCESS_BG}; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {COLOR_SUCCESS};">
+                <p style="color: {COLOR_SUCCESS}; margin:0; font-size:12px; font-weight:600;">🗄️ Supabase: Conectado</p></div>""", unsafe_allow_html=True)
         else:
-            st.markdown(f"""
-            <div style="padding: 8px 12px; background: {COLOR_INFO_BG};
-                        border-radius: 6px; margin-bottom: 8px;
-                        border-left: 3px solid {COLOR_INFO};">
-                <p style="color: {COLOR_INFO}; margin:0; font-size:12px; font-weight:600;">
-                    🗄️ Supabase: Almacenamiento local
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="padding: 8px 12px; background: {COLOR_INFO_BG}; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {COLOR_INFO};">
+                <p style="color: {COLOR_INFO}; margin:0; font-size:12px; font-weight:600;">🗄️ Almacenamiento: Local (JSON)</p></div>""", unsafe_allow_html=True)
 
         st.markdown("---")
-
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.current_user = None
@@ -2355,74 +1584,40 @@ def render_sidebar():
         st.markdown("---")
         st.markdown(f"""
         <div style="text-align:center; padding: 15px 5px;">
-            <p style="color: {COLOR_PRIMARY}; font-size:11px; font-weight:700; margin:0;">
-                CAVA
-            </p>
-            <p style="color: {COLOR_TEXT_SECONDARY}; font-size:10px; margin:2px 0;">
-                Especialistas en Robótica<br>y Automatización
-            </p>
-            <p style="color: {COLOR_TEXT_LIGHT}; font-size:10px; margin:2px 0;">
-                Roger Huamani
-            </p>
-            <p style="color: {COLOR_TEXT_LIGHT}; font-size:9px; margin:5px 0 0 0;">
-                © {APP_YEAR} Todos los derechos reservados
-            </p>
+            <p style="color: {COLOR_PRIMARY}; font-size:11px; font-weight:700; margin:0;">CAVA</p>
+            <p style="color: {COLOR_TEXT_SECONDARY}; font-size:10px; margin:2px 0;">Especialistas en Robótica<br>y Automatización</p>
+            <p style="color: {COLOR_TEXT_LIGHT}; font-size:10px; margin:2px 0;">Roger Huamani</p>
+            <p style="color: {COLOR_TEXT_LIGHT}; font-size:9px; margin:5px 0 0 0;">© {APP_YEAR} Todos los derechos reservados</p>
         </div>
         """, unsafe_allow_html=True)
 
 
-# ============================================================================
-# SECCIÓN 17: RENDERIZADO DEL FOOTER
-# ============================================================================
-
 def render_footer():
-    """Renderiza el pie de página institucional."""
     st.markdown(f"""
     <div class="footer">
         <p class="brand">🔧 CAVA - Especialistas en Robótica y Automatización</p>
         <p>Diseñado y desarrollado por <strong>Roger Huamani</strong></p>
         <p>Sistema de Gestión de Informes de Mantenimiento v{APP_VERSION} | © {APP_YEAR}</p>
-        <p style="font-size:11px; opacity:0.9; margin-top:8px;">
-            Potenciado por Inteligencia Artificial (Google Gemini) |
-            Almacenamiento en la nube (Supabase)
-        </p>
+        <p style="font-size:11px; opacity:0.9; margin-top:8px;">Potenciado por Inteligencia Artificial (Google Gemini) | Almacenamiento persistente local/nube</p>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ============================================================================
-# SECCIÓN 18: INICIALIZACIÓN DEL SESSION STATE
+# SECCIÓN 12: INICIALIZACIÓN Y PUNTO DE ENTRADA
 # ============================================================================
 
 def initialize_session_state():
-    """Inicializa todas las variables de sesión necesarias."""
     defaults = {
-        "authenticated": False,
-        "current_user": None,
-        "login_time": None,
-        "current_page": "Dashboard",
-        "selected_report_type": TIPO_REPORTE_MANTENIMIENTO,
-        "gemini_api_key": "",
-        "supabase_url": "",
-        "supabase_key": "",
-        "supabase_error": "",
-        "gemini_error": "",
-        "generated_report": None,
-        "generated_report_number": "",
-        "generated_report_type": "",
-        "generated_report_context": {},
-        "translated_report": None,
-        "viewing_report": None,
-        "local_reports": [],
-        "report_counter": {
-            TIPO_REPORTE_MANTENIMIENTO: 0,
-            TIPO_INFORME_EJECUTIVO: 0
-        },
-        "image_counter": 0,
-        "uploaded_images": [],
-        "registered_users": DEFAULT_USERS.copy()
+        "authenticated": False, "current_user": None, "login_time": None,
+        "current_page": "Dashboard", "selected_report_type": TIPO_REPORTE_MANTENIMIENTO,
+        "gemini_api_key": "", "supabase_url": "", "supabase_key": "",
+        "supabase_error": "", "gemini_error": "", "generated_report": None,
+        "generated_report_number": "", "generated_report_type": "", "generated_report_context": {},
+        "translated_report": None, "viewing_report": None, "local_reports": [],
+        "report_counter": {TIPO_REPORTE_MANTENIMIENTO: 0, TIPO_INFORME_EJECUTIVO: 0},
+        "image_counter": 0, "uploaded_images": [], "registered_users": DEFAULT_USERS.copy()
     }
-
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
@@ -2437,17 +1632,11 @@ def initialize_session_state():
         if "supabase_key" in config and not st.session_state.supabase_key:
             st.session_state.supabase_key = config["supabase_key"]
 
-    # Cargar informes persistentes
     if not st.session_state.local_reports:
         st.session_state.local_reports = ConfigPersistence.load_reports()
 
 
-# ============================================================================
-# SECCIÓN 19: FUNCIÓN PRINCIPAL DE LA APLICACIÓN
-# ============================================================================
-
 def main():
-    """Función principal que orquesta toda la aplicación."""
     initialize_session_state()
     aplicar_estilos_css()
 
@@ -2459,7 +1648,6 @@ def main():
     render_sidebar()
 
     current_page = st.session_state.get("current_page", "Dashboard")
-
     if current_page == "Dashboard":
         render_dashboard()
     elif current_page == "Nuevo Informe":
@@ -2475,10 +1663,6 @@ def main():
 
     render_footer()
 
-
-# ============================================================================
-# SECCIÓN 20: PUNTO DE ENTRADA
-# ============================================================================
 
 if __name__ == "__main__":
     main()
